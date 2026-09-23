@@ -20,9 +20,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "shopify": "shopify",
-    "setup:metafields": "node --env-file=.env --import tsx scripts/setup-metafields.ts",
-    "cleanup:test-data": "node --env-file=.env --import tsx scripts/cleanup-test-data.ts",
-    "check:scopes": "node --env-file=.env --import tsx scripts/check-scopes.ts"
+    "setup:metafields": "node --env-file-if-exists=.env --import tsx scripts/setup-metafields.ts",
+    "cleanup:test-data": "node --env-file-if-exists=.env --import tsx scripts/cleanup-test-data.ts",
+    "check:scopes": "node --env-file-if-exists=.env --import tsx scripts/check-scopes.ts"
   },
   "dependencies": {
     "@react-router/fs-routes": "7.18.2",

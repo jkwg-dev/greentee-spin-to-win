@@ -6,6 +6,7 @@ import {
   validateRewardTable,
   type Slice,
 } from "~/config/campaign";
+import { parseSpinResult } from "./spin-result";
 import {
   ForceSliceError,
   deriveDiscountCode,
@@ -194,6 +195,24 @@ describe("codes", () => {
   it("is stable across calls and differs between orders", () => {
     expect(deriveOutcome(SECRET, 1).discountCode).toBe(deriveOutcome(SECRET, 1).discountCode);
     expect(deriveOutcome(SECRET, 1).discountCode).not.toBe(deriveOutcome(SECRET, 2).discountCode);
+  });
+});
+
+describe("stale records from an older reward table", () => {
+  it("parses a stored result whose slice index no longer exists", () => {
+    // The stored reward label, key and code are authoritative; the index is
+    // only used to point the wheel, which clamps. Nothing throws.
+    const raw = JSON.stringify({
+      version: 1,
+      spunAt: "2026-09-20T00:00:00.000Z",
+      sliceIndex: 10,
+      rewardKey: "clubs_10",
+      rewardLabel: "10% Off Eligible Clubs",
+      rewardType: "discount",
+      code: "GT-ABCDEFGH",
+      expiresAt: "2026-11-02T17:00:00.000Z",
+    });
+    expect(parseSpinResult(raw)).toMatchObject({ sliceIndex: 10, rewardKey: "clubs_10" });
   });
 });
 

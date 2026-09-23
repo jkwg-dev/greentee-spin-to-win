@@ -289,6 +289,19 @@ describe("spin page: spin and results", () => {
     expect(p.el("[data-spin]").hidden).toBe(true);
   });
 
+  it("clamps a stored slice index from an older, larger reward table", async () => {
+    // Records written before the Try Again slice was removed can carry index 10.
+    // The reward label and code are authoritative; the wheel must still settle
+    // on a real slice rather than throw or spin forever.
+    const stale = { ...RESULT, sliceIndex: 10 };
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: { ...ELIGIBLE, alreadySpun: true, result: stale } },
+    });
+    expect(p.calls).toEqual([{ m: "spinToItem", a: [8, 0, true, 0, 1] }]);
+    expect(p.el("[data-result]").textContent).toContain("GT-7K2Q9MXA");
+  });
+
   it("stops the wheel and offers a retry when execute fails", async () => {
     let n = 0;
     const p = await mount({
