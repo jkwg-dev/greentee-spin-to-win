@@ -158,7 +158,6 @@ Spin page (storefront page + theme app extension block)
 Backend (Shopify app server)
   -> Admin GraphQL: order lookup, metafieldsSet, discountCodeBasicCreate,
      product variants + stock, orderEdit*, tagsAdd/tagsRemove
-  -> Omnisend: contact upsert + custom event (best effort, never blocking)
 ```
 
 ### Why the wheel is not in the extension
@@ -250,7 +249,6 @@ metafield for values that a non developer may need to change mid campaign.
 - `MIN_SUBTOTAL_CAD` (default 300)
 - `COLLECTION_CLUBS`, `COLLECTION_ACCESSORIES`, `COLLECTION_APPAREL` (regular priced collection GIDs)
 - `SPIN_SECRET` (HMAC key for outcome derivation and token signing)
-- `OMNISEND_API_KEY`
 - `APP_URL`
 
 ## Test mode
@@ -285,8 +283,6 @@ Tag matching is case insensitive and trims whitespace, because Shopify tags are 
 - The stored metafield includes `"testMode": true`.
 - Generated discount codes use the prefix `GT-TEST-` instead of `GT-`, and the discount title is
   prefixed `Spin TEST` so they are trivial to filter and bulk delete afterwards.
-- Omnisend calls are skipped entirely unless `OMNISEND_TEST_SENDS` is true, so test spins never
-  touch the real contact list or fire real automations.
 
 ### Forcing an outcome
 
@@ -308,20 +304,12 @@ The discount code is delivered on screen and nowhere else. There is no transacti
 service, no send queue, and no "we emailed you a copy" copy anywhere in the UI. A customer who
 closes the Thank you page gets back to their code through the read-only order status block.
 
-## Omnisend integration
+## Omnisend: dropped deliberately
 
-After a successful spin, fire and forget:
-
-1. Upsert the contact with custom properties `spin_reward`, `spin_code`, `spin_expires`.
-2. Send a custom event `spin_won` for reporting and segmentation.
-
-Rules:
-
-- Never block the spin response on Omnisend. Queue it or run it after responding.
-- A failure here is logged, not surfaced to the customer. The code is already on screen.
-- Only mark the contact as a marketing subscriber if the customer opted in. Reward delivery is
-  not marketing consent, and Canadian anti spam rules make this distinction matter.
-- Omnisend is skipped entirely for test spins unless `OMNISEND_TEST_SENDS` is true.
+There is no Omnisend integration and none is planned. With no email in the flow there is no
+automation for a `spin_won` event to trigger, so the integration would have added an API key,
+consent handling and retry logic for no customer-visible benefit. This is a decision, not
+unfinished work. Do not add it back without a new requirement.
 
 ## Error handling and edge cases
 

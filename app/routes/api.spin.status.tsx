@@ -10,6 +10,7 @@ import { getEnv } from "~/config/env.server";
 import { getAdminClient } from "~/lib/admin.server";
 import { json, methodNotAllowed, preflight, readJsonBody } from "~/lib/http.server";
 import { log } from "~/lib/log.server";
+import { logged } from "~/lib/request-log.server";
 import { normalizeOrderId } from "~/lib/outcome";
 import { bearerToken, verifySessionToken } from "~/lib/session-token.server";
 import { SpinError, getSpinStatus } from "~/lib/spin.server";
@@ -29,9 +30,13 @@ export async function action({ request }: ActionFunctionArgs) {
     apiSecret: env.shopifyApiSecret,
     apiKey: env.shopifyApiKey,
     shopDomain: env.shopDomain,
+    altDomains: env.shopAltDomains,
   });
   if (!session.ok) {
-    log.warn("status.unauthorized", { reason: session.reason });
+    log.warn("status.unauthorized", {
+      reason: session.reason,
+      ...("dest" in session ? { dest: session.dest } : {}),
+    });
     return json({ error: "unauthorized", reason: session.reason }, { status: 401, cors: true });
   }
 
@@ -46,13 +51,15 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  try {
-    const status = await getSpinStatus(orderId, { admin: getAdminClient(), env });
-    return json(status, { cors: true });
-  } catch (error) {
-    if (error instanceof SpinError)
-      return json(error.toJSON(), { status: error.status, cors: true });
-    log.error("status.failed", { orderId, error });
-    return json({ error: "internal", retryable: true }, { status: 500, cors: true });
-  }
+  return logged("api.spin.status", orderId, async () => {
+    try {
+      const status = await getSpinStatus(orderId, { admin: getAdminClient(), env });
+      return json(status, { cors: true });
+    } catch (error) {
+      if (error instanceof SpinError)
+        return json(error.toJSON(), { status: error.status, cors: true });
+      log.error("status.failed", { orderId, error });
+      return json({ error: "internal", retryable: true }, { status: 500, cors: true });
+    }
+  });
 }

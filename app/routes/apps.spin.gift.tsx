@@ -1,17 +1,16 @@
 /**
- * POST /apps/spin/execute   { token, forceSlice? }   (via the Shopify app proxy)
+ * POST /apps/spin/gift   { token, selection?: { Size: "22" } }   (via the Shopify app proxy)
  *
- * Performs the spin for the order in the token. `forceSlice` is honoured for
- * test users only; anyone else gets a 403.
+ * Adds the won gift to the order through the Order Editing API.
  */
 import type { ActionFunctionArgs } from "react-router";
 import { getEnv } from "~/config/env.server";
 import { getAdminClient } from "~/lib/admin.server";
 import { json, methodNotAllowed, readJsonBody } from "~/lib/http.server";
 import { log } from "~/lib/log.server";
-import { logged } from "~/lib/request-log.server";
 import { guardProxyRequest } from "~/lib/proxy-route.server";
-import { SpinError, executeSpin } from "~/lib/spin.server";
+import { logged } from "~/lib/request-log.server";
+import { SpinError, confirmGift } from "~/lib/spin.server";
 
 export function loader() {
   return methodNotAllowed("POST");
@@ -26,17 +25,24 @@ export async function action({ request }: ActionFunctionArgs) {
   const guard = guardProxyRequest(request, token, env);
   if (!guard.ok) return guard.response;
 
-  return logged("apps.spin.execute", guard.orderId, async () => {
+  const raw = body?.selection;
+  const selection =
+    raw && typeof raw === "object"
+      ? Object.fromEntries(
+          Object.entries(raw as Record<string, unknown>)
+            .filter(([, v]) => typeof v === "string")
+            .map(([k, v]) => [k, String(v).slice(0, 40)]),
+        )
+      : null;
+
+  return logged("apps.spin.gift", guard.orderId, async () => {
     try {
-      const outcome = await executeSpin(
-        guard.orderId,
-        { forceSlice: body?.forceSlice },
-        { admin: getAdminClient(), env },
+      return json(
+        await confirmGift(guard.orderId, { selection }, { admin: getAdminClient(), env }),
       );
-      return json(outcome);
     } catch (error) {
       if (error instanceof SpinError) return json(error.toJSON(), { status: error.status });
-      log.error("execute.failed", { orderId: guard.orderId, error });
+      log.error("gift.failed", { orderId: guard.orderId, error });
       return json({ error: "internal", retryable: true }, { status: 500 });
     }
   });

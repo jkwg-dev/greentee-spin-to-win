@@ -25,12 +25,16 @@ export type SessionTokenResult =
       ok: false;
       reason:
         "malformed" | "algorithm" | "signature" | "expired" | "not_yet_valid" | "audience" | "shop";
+      /** For "shop": the host the token named, so a mismatch is diagnosable from logs. */
+      dest?: string;
     };
 
 export interface SessionTokenOptions {
   readonly apiSecret: string;
   readonly apiKey: string;
   readonly shopDomain: string;
+  /** Additional accepted `dest` hosts (lower-cased). */
+  readonly altDomains?: ReadonlySet<string>;
   readonly now?: Date;
   /** Clock skew allowance in seconds. Default 60. */
   readonly leewaySeconds?: number;
@@ -84,7 +88,10 @@ export function verifySessionToken(
   } catch {
     destHost = undefined;
   }
-  if (destHost !== opts.shopDomain.toLowerCase()) return { ok: false, reason: "shop" };
+  const accepted =
+    destHost === opts.shopDomain.toLowerCase() ||
+    (destHost !== undefined && opts.altDomains?.has(destHost) === true);
+  if (!accepted) return { ok: false, reason: "shop", dest: destHost };
 
   return { ok: true, claims };
 }

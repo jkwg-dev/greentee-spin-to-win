@@ -191,6 +191,7 @@ function buildStatus(
 ): SpinStatus {
   const now = (deps.now ?? (() => new Date()))();
   const elig = evaluateEligibility(order, deps.env, mode, now);
+  logEligibility(order, mode, deps, now, elig);
   if (!elig.campaignOpen) return { campaignOpen: false };
 
   // A stored result always wins, even after the campaign closes.
@@ -229,6 +230,36 @@ function buildStatus(
     testMode: elig.isTestUser,
     ...(withSpinUrl ? { spinUrl: spinUrlFor(order, deps, now) } : {}),
   };
+}
+
+/**
+ * The eligibility decision in one greppable line: what was compared and why
+ * the customer did or did not qualify.
+ */
+function logEligibility(
+  order: OrderSnapshot,
+  mode: CampaignMode,
+  deps: SpinDeps,
+  now: Date,
+  elig: ReturnType<typeof evaluateEligibility>,
+): void {
+  log.info("spin.eligibility", {
+    orderId: order.id,
+    orderName: order.name,
+    mode,
+    isTestUser: elig.isTestUser,
+    subtotal: order.subtotal.amount,
+    currency: order.subtotal.currencyCode,
+    minSubtotal: deps.env.minSubtotalCad,
+    campaignStart: deps.env.campaignStart.toISOString(),
+    campaignEnd: deps.env.campaignEnd.toISOString(),
+    at: now.toISOString(),
+    alreadySpun: !!order.spinResult,
+    decision: !elig.campaignOpen ? "closed" : elig.eligible ? "eligible" : elig.reason,
+    ...(elig.campaignOpen && elig.eligible && elig.bypassedMinimum
+      ? { bypassedMinimum: true }
+      : {}),
+  });
 }
 
 function spinUrlFor(order: OrderSnapshot, deps: SpinDeps, now: Date): string {
@@ -320,6 +351,7 @@ export async function executeSpin(
   }
 
   const elig = evaluateEligibility(order, deps.env, mode, now);
+  logEligibility(order, mode, deps, now, elig);
   if (!elig.campaignOpen) return { campaignOpen: false };
   if (!elig.eligible) {
     l.info("spin.execute.not_eligible", { reason: elig.reason, subtotal: order.subtotal.amount });
@@ -339,6 +371,18 @@ export async function executeSpin(
     }
     l.info("spin.execute.forced", { forceSlice: slice.index, derivedSlice: derived.slice.index });
   }
+
+  l.info("spin.execute.outcome", {
+    sliceIndex: slice.index,
+    rewardKey: slice.rewardKey,
+    rewardType: slice.rewardType,
+    roll: derived.roll,
+    derivedSlice: derived.slice.index,
+    forced: forcing,
+    testMode: tester,
+    discountCode: slice.rewardType === "discount" ? derived.discountCode : null,
+    giftReference: slice.rewardType === "gift" ? derived.giftReference : null,
+  });
 
   let code: string | null = null;
   let discountNodeId: string | null = null;

@@ -21,8 +21,6 @@ describe("loadEnv", () => {
     expect(env.testTag).toBe("test-user");
     expect(env.testEmails.size).toBe(0);
     expect(env.testBypassMinSubtotal).toBe(false);
-    expect(env.omnisendTestSends).toBe(false);
-    expect(env.omnisendApiKey).toBeUndefined();
     expect(env.appUrl).toBe("https://spin.example.com");
     expect(env.shopDomain).toBe("greentee-golf.myshopify.com");
     expect(env.spinPageUrl).toBe("https://greentee-golf.myshopify.com/pages/spin-to-win");
@@ -56,7 +54,6 @@ describe("loadEnv", () => {
     expect(loadEnv({ ...VALID, TEST_BYPASS_MIN_SUBTOTAL: "TRUE" }).testBypassMinSubtotal).toBe(
       true,
     );
-    expect(loadEnv({ ...VALID, OMNISEND_TEST_SENDS: "1" }).omnisendTestSends).toBe(true);
     expect(() => loadEnv({ ...VALID, TEST_BYPASS_MIN_SUBTOTAL: "maybe" })).toThrow(
       /TEST_BYPASS_MIN_SUBTOTAL must be true or false/,
     );
@@ -98,6 +95,17 @@ describe("loadEnv", () => {
     expect(loadEnv({ ...rest, SHOPIFY_APP_URL: "https://tunnel.trycloudflare.com" }).appUrl).toBe(
       "https://tunnel.trycloudflare.com",
     );
+  });
+});
+
+describe("SHOP_ALT_DOMAINS", () => {
+  it("parses a comma list of hosts, stripping scheme and paths", () => {
+    const env = loadEnv({
+      ...VALID,
+      SHOP_ALT_DOMAINS: " https://www.GreenTeeGolf.ca/, shop.greenteegolf.ca ",
+    });
+    expect([...env.shopAltDomains]).toEqual(["www.greenteegolf.ca", "shop.greenteegolf.ca"]);
+    expect(loadEnv(VALID).shopAltDomains.size).toBe(0);
   });
 });
 

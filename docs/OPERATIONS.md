@@ -58,5 +58,6 @@ honoured after October 1.
 ## If the wheel needs to be switched off
 
 Shop settings, Custom data, Shop: set **Spin to Win campaign mode** to `off`. It takes effect
-within a minute, hides the wheel everywhere, and keeps already-won codes visible to customers.
-Set it back to `live` to resume. No developer needed.
+within a minute and hides everything: the wheel, the Thank you page banner and the stored codes
+on order status pages. Codes already issued still work at checkout until they expire. Set it back
+to `live` to resume. No developer needed.

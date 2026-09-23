@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DISCOUNT_TITLE, GIFT_CATALOG, GIFT_TAGS, SLICES } from "~/config/campaign";
 import { loadEnv, type AppEnv } from "~/config/env.server";
 import type { AdminClient, GraphqlContext, UserError } from "~/lib/admin.server";
-import { setLogSink } from "~/lib/log.server";
+import { setLogSink, type LogLine } from "~/lib/log.server";
 import { clearCampaignModeCache } from "~/lib/metafields.server";
 import { clearOrderCache } from "~/lib/orders.server";
 import { deriveOutcome } from "~/lib/outcome";
@@ -343,8 +343,11 @@ function deps(admin: FakeAdmin, envOver: Record<string, string> = {}) {
   };
 }
 
+let logLines: LogLine[] = [];
+
 beforeEach(() => {
-  setLogSink(() => {});
+  logLines = [];
+  setLogSink((line) => logLines.push(line));
   clearOrderCache();
   clearCampaignModeCache();
 });
@@ -967,5 +970,104 @@ describe("confirmGift", () => {
     const added = await getSpinStatus(GLOVE_ORDER, deps(admin));
     expect(added).toMatchObject({ alreadySpun: true, result: { gift: { status: "added" } } });
     expect("spinUrl" in added).toBe(false);
+  });
+});
+
+describe("logging: one order ID tells the whole story", () => {
+  const story = (id: string) => logLines.filter((l) => l.orderId === id).map((l) => l.event);
+
+  it("covers eligibility, outcome, discount creation, metafield write and completion for a discount spin", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    await getSpinStatus(DISCOUNT_ORDER, deps(admin));
+    await executeSpin(DISCOUNT_ORDER, {}, deps(admin));
+    const events = story(DISCOUNT_ORDER);
+    for (const expected of [
+      "spin.eligibility",
+      "spin.status",
+      "spin.execute.outcome",
+      "discount.created",
+      "metafield.written",
+      "spin.execute.done",
+    ]) {
+      expect(events).toContain(expected);
+    }
+    const elig = logLines.find(
+      (l) => l.event === "spin.eligibility" && l.orderId === DISCOUNT_ORDER,
+    )!;
+    expect(elig).toMatchObject({
+      decision: "eligible",
+      subtotal: 300,
+      minSubtotal: 300,
+      mode: "live",
+      isTestUser: false,
+    });
+    const outcome = logLines.find((l) => l.event === "spin.execute.outcome")!;
+    expect(outcome).toMatchObject({ sliceIndex: 1, rewardKey: "clubs_10", forced: false });
+    expect(typeof outcome.discountCode).toBe("string");
+    // Every line about this order carries its ID.
+    expect(
+      logLines
+        .filter(
+          (l) =>
+            l.event.startsWith("spin.") ||
+            l.event.startsWith("discount.") ||
+            l.event.startsWith("metafield."),
+        )
+        .every((l) => l.orderId === DISCOUNT_ORDER),
+    ).toBe(true);
+  });
+
+  it("covers the gift path through confirmation and records why an ineligible order was refused", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
+    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants({ "22": [1, 4, 0] }));
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const events = story(GLOVE_ORDER);
+    for (const expected of [
+      "spin.eligibility",
+      "spin.execute.outcome",
+      "metafield.written",
+      "spin.execute.done",
+      "gift.added",
+      "gift.confirm.done",
+    ]) {
+      expect(events).toContain(expected);
+    }
+    expect(logLines.find((l) => l.event === "gift.confirm.done")).toMatchObject({
+      orderId: GLOVE_ORDER,
+      selection: { Size: "22" },
+    });
+
+    const cheap = "77777";
+    admin.orders.set(
+      cheap,
+      rawOrder(cheap, {
+        currentSubtotalPriceSet: { shopMoney: { amount: "299.99", currencyCode: "CAD" } },
+      }),
+    );
+    await expect(executeSpin(cheap, {}, deps(admin))).rejects.toMatchObject({
+      code: "not_eligible",
+    });
+    expect(
+      logLines.find((l) => l.event === "spin.eligibility" && l.orderId === cheap),
+    ).toMatchObject({ decision: "below_minimum", subtotal: 299.99 });
+  });
+
+  it("logs Shopify userErrors from a failed discount creation against the order", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    admin.failCreateWith = [
+      { field: ["basicCodeDiscount", "customerGets"], code: "INVALID", message: "nope" },
+    ];
+    await expect(executeSpin(DISCOUNT_ORDER, {}, deps(admin))).rejects.toMatchObject({
+      code: "discount_failed",
+    });
+    const failed = logLines.find((l) => l.event === "discount.create.failed")!;
+    expect(failed).toMatchObject({ orderId: DISCOUNT_ORDER, level: "error" });
+    expect(failed.userErrors).toEqual([
+      { field: ["basicCodeDiscount", "customerGets"], code: "INVALID", message: "nope" },
+    ]);
   });
 });

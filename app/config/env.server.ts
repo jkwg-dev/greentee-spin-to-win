@@ -26,10 +26,8 @@ export interface AppEnv {
   /** Lower-cased and trimmed. */
   readonly testEmails: ReadonlySet<string>;
   readonly testBypassMinSubtotal: boolean;
-  readonly omnisendTestSends: boolean;
   readonly collections: Readonly<Record<DiscountCollectionKey, string>>;
   readonly spinSecret: string;
-  readonly omnisendApiKey: string | undefined;
   /** Public URL of this server. Optional: nothing server-side depends on it at boot. */
   readonly appUrl: string | undefined;
   /** Absolute URL of the storefront page holding the wheel block (no query string). */
@@ -39,6 +37,11 @@ export interface AppEnv {
   readonly shopifyApiSecret: string;
   /** The single store this app serves, e.g. greentee-golf.myshopify.com. */
   readonly shopDomain: string;
+  /**
+   * Extra hosts accepted as the shop in extension session tokens (`dest`), for
+   * example the primary storefront domain. Lower-cased. Safety valve only.
+   */
+  readonly shopAltDomains: ReadonlySet<string>;
 }
 
 export type EnvSource = Readonly<Record<string, string | undefined>>;
@@ -103,7 +106,6 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
       .filter((e) => e !== ""),
   );
   const testBypassMinSubtotal = bool(source, "TEST_BYPASS_MIN_SUBTOTAL", false, problems);
-  const omnisendTestSends = bool(source, "OMNISEND_TEST_SENDS", false, problems);
 
   const collectionKeys: Record<DiscountCollectionKey, string> = {
     clubs: "COLLECTION_CLUBS",
@@ -123,8 +125,6 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
   if (spinSecret.length < 16)
     problems.push("SPIN_SECRET is required and must be at least 16 characters");
 
-  const omnisendApiKey = str(source, "OMNISEND_API_KEY");
-
   // The Shopify CLI injects SHOPIFY_APP_URL during `shopify app dev`; APP_URL wins when set.
   // Optional so development boots before the production URL exists.
   const appUrl = str(source, "APP_URL") ?? str(source, "SHOPIFY_APP_URL");
@@ -140,6 +140,19 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
   if (!/^[a-z0-9-]+\.myshopify\.com$/.test(shopDomain)) {
     problems.push("SHOP_DOMAIN must be the store's *.myshopify.com domain");
   }
+
+  const shopAltDomains = new Set(
+    (str(source, "SHOP_ALT_DOMAINS") ?? "")
+      .split(",")
+      .map((d) =>
+        d
+          .trim()
+          .toLowerCase()
+          .replace(/^https?:\/\//, "")
+          .replace(/\/.*$/, ""),
+      )
+      .filter((d) => d !== ""),
+  );
 
   // Where the Thank you page sends customers to spin. Defaults to the
   // myshopify domain; set it to the primary storefront domain in production.
@@ -161,15 +174,14 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
     testTag,
     testEmails,
     testBypassMinSubtotal,
-    omnisendTestSends,
     collections,
     spinSecret,
-    omnisendApiKey,
     appUrl: appUrl?.replace(/\/+$/, ""),
     spinPageUrl: spinPageUrl.replace(/\/+$/, ""),
     shopifyApiKey,
     shopifyApiSecret,
     shopDomain,
+    shopAltDomains,
   };
 }
 

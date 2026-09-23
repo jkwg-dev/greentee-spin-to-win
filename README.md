@@ -98,6 +98,24 @@ with the wheel while each label counter-rotates to stay upright. A failed execut
 wheel and shows Try again, which is safe because the server is idempotent. Reduced motion
 shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlice` for testers.
 
+## Support: one order ID tells the whole story
+
+Logs are JSON lines and every event about an order carries `orderId` (the numeric order ID).
+`grep '"orderId":"5678"'` in the host logs returns, in order:
+
+| Event                                                                                        | What it tells you                                                    |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `http.request`                                                                               | route, HTTP status, latency, error code (one per request)            |
+| `spin.eligibility`                                                                           | mode, tester flag, subtotal vs minimum, campaign window, decision    |
+| `spin.status` / `spin.state`                                                                 | what the Thank you page or spin page was told                        |
+| `spin.execute.outcome`                                                                       | slice, reward, roll, forced flag, the derived code or gift reference |
+| `admin.request`                                                                              | every Admin API call: operation, cost, and any `userErrors`          |
+| `discount.created` / `discount.duplicate.reused` / `discount.create.failed`                  | the code and its discount node                                       |
+| `metafield.written`                                                                          | the spin record is on the order                                      |
+| `spin.execute.done`                                                                          | the spin completed                                                   |
+| `gift.added` / `gift.confirm.done` / `gift.confirm.unavailable` / `gift.confirm.edit_failed` | the gift step                                                        |
+| `status.unauthorized` / `proxy.rejected` / `proxy.invalid_token`                             | rejected requests (no order ID: the request never got that far)      |
+
 ## Gifts
 
 Gift wins are added to the order through the Order Editing API (`write_order_edits`,

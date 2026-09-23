@@ -64,7 +64,16 @@ describe("verifySessionToken", () => {
     expect(verifySessionToken(jwt({ ...good, dest: "https://evil.myshopify.com" }), opts)).toEqual({
       ok: false,
       reason: "shop",
+      dest: "evil.myshopify.com",
     });
+  });
+
+  it("accepts an allow-listed alternate shop host", () => {
+    const alt = { ...opts, altDomains: new Set(["www.greenteegolf.ca"]) };
+    expect(verifySessionToken(jwt({ ...good, dest: "https://www.greenteegolf.ca" }), alt).ok).toBe(
+      true,
+    );
+    expect(verifySessionToken(jwt({ ...good, dest: "https://other.example" }), alt).ok).toBe(false);
   });
 
   it("allows small clock skew", () => {
