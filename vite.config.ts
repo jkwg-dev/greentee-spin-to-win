@@ -1,0 +1,37 @@
+import { reactRouter } from "@react-router/dev/vite";
+import { defineConfig, type UserConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+// Shopify CLI passes HOST; normalise it onto SHOPIFY_APP_URL so Vite's dev
+// server is not confused (same workaround as Shopify's own template).
+if (
+  process.env.HOST &&
+  (!process.env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL === process.env.HOST)
+) {
+  process.env.SHOPIFY_APP_URL = process.env.HOST;
+  delete process.env.HOST;
+}
+
+const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost").hostname;
+
+const hmrConfig =
+  host === "localhost"
+    ? { protocol: "ws", host: "localhost", port: 64999, clientPort: 64999 }
+    : {
+        protocol: "wss",
+        host,
+        port: parseInt(process.env.FRONTEND_PORT ?? "", 10) || 8002,
+        clientPort: 443,
+      };
+
+export default defineConfig({
+  server: {
+    allowedHosts: [host],
+    cors: { preflightContinue: true },
+    port: Number(process.env.PORT || 3000),
+    hmr: hmrConfig,
+    fs: { allow: ["app", "node_modules"] },
+  },
+  plugins: [reactRouter(), tsconfigPaths()],
+  build: { assetsInlineLimit: 0 },
+}) satisfies UserConfig;

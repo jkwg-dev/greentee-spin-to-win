@@ -1,0 +1,7 @@
+name = "spin-to-win"
+roles = ["frontend", "backend"]
+webhooks_path = "/webhooks"
+
+[commands]
+predev = "echo 'no database setup required'"
+dev = "npx vite"

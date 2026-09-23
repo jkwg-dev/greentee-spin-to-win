@@ -1,0 +1,6 @@
+node_modules
+build
+.react-router
+pnpm-lock.yaml
+extensions/*/assets/spin-wheel.js
+CLAUDE.md

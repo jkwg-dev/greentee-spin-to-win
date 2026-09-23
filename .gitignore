@@ -1,0 +1,25 @@
+node_modules
+
+# macOS
+.DS_Store
+
+/.cache
+/build
+/public/build/
+/public/_dev
+
+.env
+.env.*
+!.env.example
+
+/extensions/*/dist
+
+# Shopify CLI state
+.shopify/*
+.shopify.lock
+
+# React Router generated types
+.react-router/
+
+# Vitest
+coverage
