@@ -79,17 +79,30 @@ Each discount reward creates one single use code through `discountCodeBasicCreat
 
 ### Gift rewards
 
-Gifts do not create a discount. The app records the reward and returns claim instructions. Staff
-fulfil these manually. Generate a short claim reference (`GFJ-` plus 6 characters) so staff can
-match a customer to the recorded spin.
+Gifts do not create a discount and are not a claim reference. When a gift slice is won, the app
+adds the real product variant to the order through the Order Editing API and applies a 100 percent
+line discount to that line, so the customer pays nothing and the order shows the gift explicitly.
+This needs the `write_order_edits` scope. Variant selection for sized items is specified
+separately.
+
+Gift issuance sits behind the `GiftIssuer` interface in `app/lib/gifts.server.ts`. Until the
+Order Editing issuer exists, a gift outcome returns a retryable 503 and writes nothing; there is
+no interim claim-reference fallback. The derived `GFJ-` reference is kept only as the idempotency
+handle for the order edit (stored as a line item custom attribute), never shown as a claim code.
+
+The spin always happens on the Thank you page moments after checkout, so the order is always
+unfulfilled at spin time. Do not build a fulfilled-order fallback path.
 
 ## Architecture
 
 ```
-Thank you page (Checkout UI extension)
-  -> POST {APP_URL}/api/spin/status   { orderId }
-     returns { eligible, alreadySpun, reward, code, expiresAt, spinUrl }
+Thank you page (Checkout UI extension, purchase.thank-you.block.render)
+  -> POST {APP_URL}/api/spin/status   { orderId }   (Bearer: extension session token)
+     returns { campaignOpen, eligible, alreadySpun, result, spinUrl }
   -> if eligible and not spun: Button links to spinUrl (signed token)
+
+Order status page (same extension, customer-account.order-status.block.render)
+  -> same status call; renders the stored result only, or nothing at all
 
 Spin page (storefront page + theme app extension block)
   -> GET  /apps/spin/state?token=...     verify token, return current state
@@ -109,8 +122,10 @@ The spin page verifies the token server side; it never trusts an order ID from t
 
 ### Required scopes
 
-`read_orders`, `write_discounts`. Note that `read_orders` only covers orders from the last 60
-days, which is sufficient here. Do not request `read_all_orders`; it needs Shopify approval.
+`write_orders` (order lookup plus writing the order metafield; write includes read),
+`write_discounts`, and `write_order_edits` once gift issuance lands. Note that order access only
+covers orders from the last 60 days, which is sufficient here. Do not request `read_all_orders`;
+it needs Shopify approval.
 
 ## Data model
 
@@ -136,11 +151,15 @@ Value shape:
   "discountNodeId": "gid://shopify/DiscountCodeNode/123456789",
   "expiresAt": "2026-11-02T17:00:00.000Z",
   "email": "customer@example.com",
-  "notified": true
+  "gift": null,
+  "testMode": false,
+  "forced": false
 }
 ```
 
-For gifts, `rewardType` is `gift`, `code` holds the claim reference, and `discountNodeId` is null.
+There is no `notified` field: the code is delivered on screen and nowhere else. The record also
+carries `testMode` and `forced` (see Test mode). For gifts, `rewardType` is `gift`, `code` and
+`discountNodeId` are null, and `gift` holds `{ variantId, lineItemId, orderEditId, reference }`.
 
 ## Idempotency: the important part
 
@@ -201,6 +220,9 @@ Tag matching is case insensitive and trims whitespace, because Shopify tags are 
 ### What changes for a test user
 
 - In `test` mode they are the only ones who pass eligibility.
+- They bypass the campaign start date, so the flow can be exercised before October 1. They do
+  not bypass the end date: after November 2 the campaign is closed for everyone, so a stale test
+  link can never mint a code once the promotion has ended.
 - If `TEST_BYPASS_MIN_SUBTOTAL` is true, the 300 CAD minimum is skipped for them, so testers do
   not have to place expensive real orders. It never applies to anyone else.
 - The stored metafield includes `"testMode": true`.
@@ -223,12 +245,18 @@ Provide a script that lists every discount whose title starts with `Spin TEST` a
 and that clears the spin metafield from tagged test orders. Run it before launch. Never let it
 touch anything without the test prefix.
 
+## No email, ever
+
+The discount code is delivered on screen and nowhere else. There is no transactional email
+service, no send queue, and no "we emailed you a copy" copy anywhere in the UI. A customer who
+closes the Thank you page gets back to their code through the read-only order status block.
+
 ## Omnisend integration
 
 After a successful spin, fire and forget:
 
 1. Upsert the contact with custom properties `spin_reward`, `spin_code`, `spin_expires`.
-2. Send a custom event `spin_won` to trigger the reward email.
+2. Send a custom event `spin_won` for reporting and segmentation.
 
 Rules:
 
@@ -236,6 +264,7 @@ Rules:
 - A failure here is logged, not surfaced to the customer. The code is already on screen.
 - Only mark the contact as a marketing subscriber if the customer opted in. Reward delivery is
   not marketing consent, and Canadian anti spam rules make this distinction matter.
+- Omnisend is skipped entirely for test spins unless `OMNISEND_TEST_SENDS` is true.
 
 ## Error handling and edge cases
 
@@ -264,9 +293,11 @@ Rules:
 
 Do not build these unless asked:
 
-- The `customer-account.order-status.block.render` target. The extension renders on the thank you
-  page only. This is a deliberate decision, not an oversight: the spin happens immediately after
-  checkout, which keeps the order unfulfilled and keeps the gift flow simple.
+- Anything interactive on the `customer-account.order-status.block.render` target. That target
+  is display only: if a stored spin result exists it shows the code or gift with its expiry and
+  a copy control, otherwise it renders nothing. No eligibility banner, no spin button, no link to
+  the spin page, no "you missed it" message. A spin can only ever start from the Thank you page,
+  moments after checkout. That is an invariant.
 - Any pre purchase or landing page wheel. The approved flow is post purchase only.
 - In store and POS participation. Staff handle that manually outside this app.
 - A no purchase alternative entry route. That is handled through the Official Rules, offline.

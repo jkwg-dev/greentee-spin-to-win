@@ -216,3 +216,9 @@ export const SPIN_METAFIELD = {
 } as const;
 
 export const SPIN_RESULT_VERSION = 1;
+
+/** How long a signed spin URL stays valid. Spins only start from the Thank you page. */
+export const SPIN_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+
+/** Default storefront path of the page that hosts the wheel block. */
+export const DEFAULT_SPIN_PAGE_PATH = "/pages/spin-to-win";

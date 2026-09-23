@@ -9,6 +9,7 @@ import {
   CAMPAIGN_DEFAULTS,
   CAMPAIGN_MODES,
   CAMPAIGN_TIMEZONE,
+  DEFAULT_SPIN_PAGE_PATH,
   type CampaignMode,
   type DiscountCollectionKey,
 } from "~/config/campaign";
@@ -29,7 +30,10 @@ export interface AppEnv {
   readonly collections: Readonly<Record<DiscountCollectionKey, string>>;
   readonly spinSecret: string;
   readonly omnisendApiKey: string | undefined;
-  readonly appUrl: string;
+  /** Public URL of this server. Optional: nothing server-side depends on it at boot. */
+  readonly appUrl: string | undefined;
+  /** Absolute URL of the storefront page holding the wheel block (no query string). */
+  readonly spinPageUrl: string;
   /** Shopify app credentials (Dev Dashboard client ID and secret). */
   readonly shopifyApiKey: string;
   readonly shopifyApiSecret: string;
@@ -122,9 +126,11 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
   const omnisendApiKey = str(source, "OMNISEND_API_KEY");
 
   // The Shopify CLI injects SHOPIFY_APP_URL during `shopify app dev`; APP_URL wins when set.
-  const appUrl = str(source, "APP_URL") ?? str(source, "SHOPIFY_APP_URL") ?? "";
-  if (!/^https?:\/\//.test(appUrl))
-    problems.push("APP_URL (or SHOPIFY_APP_URL) must be an absolute URL");
+  // Optional so development boots before the production URL exists.
+  const appUrl = str(source, "APP_URL") ?? str(source, "SHOPIFY_APP_URL");
+  if (appUrl !== undefined && !/^https?:\/\//.test(appUrl)) {
+    problems.push("APP_URL (or SHOPIFY_APP_URL) must be an absolute URL when set");
+  }
 
   const shopifyApiKey = str(source, "SHOPIFY_API_KEY") ?? "";
   if (!shopifyApiKey) problems.push("SHOPIFY_API_KEY is required");
@@ -133,6 +139,14 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
   const shopDomain = (str(source, "SHOP_DOMAIN") ?? "").toLowerCase();
   if (!/^[a-z0-9-]+\.myshopify\.com$/.test(shopDomain)) {
     problems.push("SHOP_DOMAIN must be the store's *.myshopify.com domain");
+  }
+
+  // Where the Thank you page sends customers to spin. Defaults to the
+  // myshopify domain; set it to the primary storefront domain in production.
+  const spinPageUrl =
+    str(source, "SPIN_PAGE_URL") ?? `https://${shopDomain}${DEFAULT_SPIN_PAGE_PATH}`;
+  if (!/^https?:\/\//.test(spinPageUrl) || spinPageUrl.includes("?")) {
+    problems.push("SPIN_PAGE_URL must be an absolute URL without a query string");
   }
 
   if (problems.length > 0) {
@@ -151,7 +165,8 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
     collections,
     spinSecret,
     omnisendApiKey,
-    appUrl: appUrl.replace(/\/+$/, ""),
+    appUrl: appUrl?.replace(/\/+$/, ""),
+    spinPageUrl: spinPageUrl.replace(/\/+$/, ""),
     shopifyApiKey,
     shopifyApiSecret,
     shopDomain,

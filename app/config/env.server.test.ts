@@ -25,6 +25,7 @@ describe("loadEnv", () => {
     expect(env.omnisendApiKey).toBeUndefined();
     expect(env.appUrl).toBe("https://spin.example.com");
     expect(env.shopDomain).toBe("greentee-golf.myshopify.com");
+    expect(env.spinPageUrl).toBe("https://greentee-golf.myshopify.com/pages/spin-to-win");
     // Defaults from campaign.ts, interpreted in America/Vancouver.
     expect(env.campaignStart.toISOString()).toBe("2026-10-01T07:00:00.000Z");
     expect(env.campaignEnd.toISOString()).toBe("2026-11-02T17:00:00.000Z");
@@ -76,8 +77,14 @@ describe("loadEnv", () => {
 
   it("reports every problem at once", () => {
     expect(() => loadEnv({})).toThrow(
-      /COLLECTION_CLUBS is required[\s\S]*SPIN_SECRET[\s\S]*APP_URL[\s\S]*SHOP_DOMAIN/,
+      /COLLECTION_CLUBS is required[\s\S]*SPIN_SECRET[\s\S]*SHOP_DOMAIN/,
     );
+  });
+
+  it("boots without APP_URL but rejects a relative one", () => {
+    const { APP_URL: _omit, ...rest } = VALID;
+    expect(loadEnv(rest).appUrl).toBeUndefined();
+    expect(() => loadEnv({ ...rest, APP_URL: "spin.example.com" })).toThrow(/APP_URL/);
   });
 
   it("requires collection GIDs, not handles", () => {
@@ -90,6 +97,17 @@ describe("loadEnv", () => {
     const { APP_URL: _omit, ...rest } = VALID;
     expect(loadEnv({ ...rest, SHOPIFY_APP_URL: "https://tunnel.trycloudflare.com" }).appUrl).toBe(
       "https://tunnel.trycloudflare.com",
+    );
+  });
+});
+
+describe("SPIN_PAGE_URL", () => {
+  it("accepts an absolute storefront URL and rejects a query string", () => {
+    expect(
+      loadEnv({ ...VALID, SPIN_PAGE_URL: "https://www.greenteegolf.ca/pages/spin/" }).spinPageUrl,
+    ).toBe("https://www.greenteegolf.ca/pages/spin");
+    expect(() => loadEnv({ ...VALID, SPIN_PAGE_URL: "https://x.com/p?x=1" })).toThrow(
+      /SPIN_PAGE_URL/,
     );
   });
 });
