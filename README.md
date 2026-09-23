@@ -92,8 +92,9 @@ are block settings.
 The page needs `?token=` from the Thank you page. It calls `/apps/spin/state` (invalid, expired
 or missing token: a plain message and nothing else; stored result: shown without spinning) and
 `/apps/spin/execute` on Spin. The server picks the slice; the page animates to that index with
-`spinToItem` and never derives its own outcome. Slices are drawn in reward-table order with a
-navy / cream / green palette by position; labels and icons live in an HTML layer that rotates
+`spinToItem` and never derives its own outcome. The wheel has nine slices, drawn in reward-table
+order (every slice awards something; there is no "try again" slice) with a navy / cream / green
+palette by position; labels and icons live in an HTML layer that rotates
 with the wheel while each label counter-rotates to stay upright. A failed execute stops the
 wheel and shows Try again, which is safe because the server is idempotent. Reduced motion
 shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlice` for testers.

@@ -703,7 +703,7 @@ describe("executeSpin: test users and forceSlice", () => {
     expect(record).toMatchObject({ testMode: true, forced: true });
   });
 
-  it("rejects forceSlice 10 and out-of-range values with 400", async () => {
+  it("rejects forceSlice 10 (no such slice) and out-of-range values with 400", async () => {
     const admin = new FakeAdmin();
     admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER, { tags: ["test-user"] }));
     await expect(

@@ -42,7 +42,6 @@ const WHEEL = [
   { index: 7, label: "GFJ Gloves", icon: "glove", rewardType: "gift" },
   { index: 8, label: "GFJ Club Brush", icon: "brush", rewardType: "gift" },
   { index: 9, label: "GFJ Socks", icon: "sock", rewardType: "gift" },
-  { index: 10, label: "Try Again", icon: "trophy", rewardType: "none" },
 ];
 
 const RESULT = {
@@ -264,7 +263,7 @@ describe("spin page: spin and results", () => {
       state: { status: 200, body: ELIGIBLE },
     });
     expect(p.status()).toBe("Intro copy");
-    expect(document.querySelectorAll(".gt-spin__label")).toHaveLength(10);
+    expect(document.querySelectorAll(".gt-spin__label")).toHaveLength(9);
     p.el("[data-spin]").click();
     await flush();
     expect(p.calls.map((c) => c.m)).toEqual(["spin", "spinToItem"]);

@@ -24,15 +24,9 @@ export const CAMPAIGN_MODES = ["off", "test", "live"] as const;
 export type CampaignMode = (typeof CAMPAIGN_MODES)[number];
 
 export type RewardKey =
-  | "clubs_10"
-  | "accessories_15"
-  | "apparel_30"
-  | "gift_gloves"
-  | "gift_brush"
-  | "gift_socks"
-  | "try_again";
+  "clubs_10" | "accessories_15" | "apparel_30" | "gift_gloves" | "gift_brush" | "gift_socks";
 
-export type RewardType = "discount" | "gift" | "none";
+export type RewardType = "discount" | "gift";
 
 export type DiscountCollectionKey = "clubs" | "accessories" | "apparel";
 
@@ -47,7 +41,7 @@ export interface GiftReward {
   readonly name: string;
 }
 
-export type WheelIcon = "club" | "glove" | "brush" | "sock" | "shirt" | "bag" | "trophy";
+export type WheelIcon = "club" | "glove" | "brush" | "sock" | "shirt" | "bag";
 
 export interface Slice {
   /** 1-based slice number as shown on the wheel. */
@@ -65,12 +59,11 @@ export interface Slice {
   readonly gift?: GiftReward;
 }
 
-export const TRY_AGAIN_SLICE_INDEX = 10;
-
 /**
  * The approved reward table. Order matters: the outcome mapping walks this
  * array in order and lands on the first slice whose cumulative probability
- * exceeds the roll. Slice 10 ("Try Again") is decorative and has 0%.
+ * exceeds the roll. Every slice awards something; there is no decorative
+ * "try again" slice.
  */
 export const SLICES: readonly Slice[] = [
   {
@@ -163,15 +156,6 @@ export const SLICES: readonly Slice[] = [
     probability: 5,
     gift: { name: "GFJ Socks" },
   },
-  {
-    index: TRY_AGAIN_SLICE_INDEX,
-    label: "Try Again",
-    wheelLabel: "Try Again",
-    icon: "trophy",
-    rewardKey: "try_again",
-    rewardType: "none",
-    probability: 0,
-  },
 ];
 
 /**
@@ -182,11 +166,11 @@ export function validateRewardTable(slices: readonly Slice[]): string[] {
   const problems: string[] = [];
   const sum = slices.reduce((acc, s) => acc + s.probability, 0);
   if (sum !== 100) problems.push(`probabilities sum to ${sum}, expected exactly 100`);
-  if (slices.length !== 10) problems.push(`expected 10 slices, found ${slices.length}`);
+  if (slices.length === 0) problems.push("reward table is empty");
   slices.forEach((s, i) => {
     if (s.index !== i + 1) problems.push(`slice at position ${i} has index ${s.index}`);
-    if (!Number.isInteger(s.probability) || s.probability < 0) {
-      problems.push(`slice ${s.index} has a non-integer or negative probability`);
+    if (!Number.isInteger(s.probability) || s.probability <= 0) {
+      problems.push(`slice ${s.index} must have a positive integer probability`);
     }
     if (s.rewardType === "discount" && !s.discount) {
       problems.push(`slice ${s.index} is a discount but has no discount config`);
@@ -194,14 +178,8 @@ export function validateRewardTable(slices: readonly Slice[]): string[] {
     if (s.rewardType === "gift" && !s.gift) {
       problems.push(`slice ${s.index} is a gift but has no gift config`);
     }
-    if (s.rewardType === "none" && s.probability !== 0) {
-      problems.push(`slice ${s.index} awards nothing but has probability ${s.probability}`);
-    }
+    if (!s.wheelLabel || !s.icon) problems.push(`slice ${s.index} needs a wheel label and an icon`);
   });
-  const tryAgain = slices.find((s) => s.index === TRY_AGAIN_SLICE_INDEX);
-  if (!tryAgain || tryAgain.rewardKey !== "try_again" || tryAgain.probability !== 0) {
-    problems.push(`slice ${TRY_AGAIN_SLICE_INDEX} must be try_again with 0% probability`);
-  }
   return problems;
 }
 

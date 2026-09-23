@@ -12,7 +12,7 @@
  * 2^32 gives the half-open [0, 1) that the cumulative table needs.
  */
 import { createHmac } from "node:crypto";
-import { CODE_FORMAT, SLICES, TRY_AGAIN_SLICE_INDEX, type Slice } from "~/config/campaign";
+import { CODE_FORMAT, SLICES, type Slice } from "~/config/campaign";
 
 const ROLL_DIVISOR = 0x1_0000_0000; // 2^32
 
@@ -58,9 +58,9 @@ export function rollFromHex(hex: string): number {
 
 /**
  * Maps a roll in [0, 1) onto the cumulative probability table. The first slice
- * whose cumulative probability strictly exceeds the roll wins. Because slice 10
- * has 0% probability and the table sums to 100, the cumulative value reaches
- * 1.0 at slice 9 and slice 10 can never be selected.
+ * whose cumulative probability strictly exceeds the roll wins. Because the
+ * table sums to 100 and the roll is strictly below 1, the last slice's upper
+ * bound is never reached from above and nothing outside the table can win.
  */
 export function selectSlice(roll: number, slices: readonly Slice[] = SLICES): Slice {
   if (!(roll >= 0 && roll < 1)) throw new Error(`roll out of range: ${roll}`);
@@ -72,7 +72,7 @@ export function selectSlice(roll: number, slices: readonly Slice[] = SLICES): Sl
     cumulative += slice.probability;
     if (roll < cumulative / 100) return slice;
   }
-  // Unreachable while the table sums to 100. Guard anyway rather than return slice 10.
+  // Unreachable while the table sums to 100. Guard anyway.
   throw new Error("roll did not map to any slice; reward table is inconsistent");
 }
 
@@ -138,17 +138,14 @@ export class ForceSliceError extends Error {
 }
 
 /**
- * Validates a `forceSlice` value supplied by a test user. Accepts 1 to 9 and
- * rejects everything else, including slice 10, which must stay unreachable
- * even when forced. Authorisation (is this a test user?) is the caller's job.
+ * Validates a `forceSlice` value supplied by a test user: an integer index of
+ * a slice in the table (1 to SLICES.length). Authorisation (is this a test
+ * user?) is the caller's job.
  */
 export function resolveForcedSlice(input: unknown, slices: readonly Slice[] = SLICES): Slice {
   const n = typeof input === "string" && input.trim() !== "" ? Number(input) : input;
   if (typeof n !== "number" || !Number.isInteger(n)) {
-    throw new ForceSliceError("forceSlice must be an integer between 1 and 10");
-  }
-  if (n === TRY_AGAIN_SLICE_INDEX) {
-    throw new ForceSliceError(`slice ${TRY_AGAIN_SLICE_INDEX} (Try Again) cannot be awarded`);
+    throw new ForceSliceError(`forceSlice must be an integer between 1 and ${slices.length}`);
   }
   const slice = slices.find((s) => s.index === n);
   if (!slice || slice.probability === 0) {

@@ -54,7 +54,9 @@ once protected customer data with the email field is approved, so prefer the tag
 ## 4. Before October 1
 
 - [ ] `pnpm cleanup:test-data` (dry run), then `pnpm cleanup:test-data -- --apply`: deletes
-      every `Spin TEST` discount and clears test spin records. Confirm in Discounts.
+      every `Spin TEST` discount and clears test spin records. Confirm in Discounts. Run it again
+      after any change to the reward table (the wheel went from ten slices to nine on
+      September 23) so no test record carries indices from an older table.
 - [ ] Remove the `test-user` tag from any real customer accounts used for testing, or leave
       it only on staff accounts.
 - [ ] `TEST_BYPASS_MIN_SUBTOTAL=false` on the host.

@@ -100,7 +100,7 @@
   var SPIN_REVOLUTIONS = 4;
   var REDUCED_DURATION = 700;
   var LABEL_RADIUS = 0.64; // fraction of the wheel radius
-  var SLICE_DEG = 36;
+  var sliceDeg = 36; // recomputed from the number of slices the server sends
 
   var params = new URLSearchParams(window.location.search);
   var token = params.get("token");
@@ -220,7 +220,8 @@
       onRest: onWheelRest,
     });
     // Rest position: slice 1 centred under the pointer, as in the design.
-    wheel.rotation = -SLICE_DEG / 2;
+    sliceDeg = 360 / items.length;
+    wheel.rotation = -sliceDeg / 2;
     buildLabels(slices);
     wheelReady = true;
     show(els.stage, true);
@@ -233,7 +234,7 @@
     while (layer.firstChild) layer.removeChild(layer.firstChild);
     labelEls = slices.map(function (s, i) {
       var p = PALETTE[i % PALETTE.length];
-      var centre = i * SLICE_DEG + SLICE_DEG / 2; // wheel angle, 0 = top, clockwise
+      var centre = i * sliceDeg + sliceDeg / 2; // wheel angle, 0 = top, clockwise
       var rad = (centre * Math.PI) / 180;
       var label = el("div", "gt-spin__label");
       label.style.left = 50 + LABEL_RADIUS * 50 * Math.sin(rad) + "%";

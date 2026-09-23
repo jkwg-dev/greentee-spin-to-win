@@ -42,8 +42,9 @@ These are not negotiable. Design around them.
 
 ### Rewards and probabilities
 
-The wheel shows 10 slices. Slice probabilities are what the app actually rolls; the visual
-layout deliberately over-represents gifts. "Try Again" is decorative and must never be selected.
+The wheel shows 9 slices. Slice probabilities are what the app actually rolls; the visual
+layout deliberately over-represents gifts. Every slice awards something; there is no "try again"
+slice (one was removed on purpose, so do not add a decorative slice back).
 
 | Slice | Reward displayed              | Reward key      | Probability |
 |-------|-------------------------------|-----------------|-------------|
@@ -56,11 +57,10 @@ layout deliberately over-represents gifts. "Try Again" is decorative and must ne
 | 7     | GFJ Gloves                    | `gift_gloves`   | 4%          |
 | 8     | GFJ Club Brush                | `gift_brush`    | 4%          |
 | 9     | GFJ Socks                     | `gift_socks`    | 5%          |
-| 10    | Try Again                     | `try_again`     | 0%          |
 
-Totals: discount codes 75%, gifts 25%, try again 0%. Slices 2 and 7 award the same reward, as do
-4 and 8, and 5 and 9. The table must live in one config module and the code must assert that the
-probabilities sum to exactly 100 at startup.
+Totals: discount codes 75%, gifts 25%. Slices 2 and 7 award the same reward, as do 4 and 8, and
+5 and 9. The table must live in one config module and the code must assert that the
+probabilities sum to exactly 100 at startup and that every slice has a positive probability.
 
 ### Discount rewards
 
@@ -289,10 +289,9 @@ Tag matching is case insensitive and trims whitespace, because Shopify tags are 
 ### Forcing an outcome
 
 Outcomes are derived deterministically from the order ID, which makes testing a specific reward
-awkward. For test users only, accept an optional `forceSlice` parameter (1 to 10) on the execute
+awkward. For test users only, accept an optional `forceSlice` parameter (1 to 9) on the execute
 endpoint and use it instead of the derived slice. Reject it with a 403 for anyone who is not a
-test user, and record `"forced": true` in the metafield when it is used. Slice 10 must stay
-unreachable even here.
+test user, and record `"forced": true` in the metafield when it is used.
 
 ### Cleanup
 
@@ -334,7 +333,7 @@ unfinished work. Do not add it back without a new requirement.
   and any `userErrors`.
 - Structured logs keyed by order ID. Support questions are answered by grepping one order ID.
 - Unit test the outcome mapping against the probability table, including the boundary values and
-  the assertion that slice 10 is unreachable.
+  the assertion that the largest possible roll still lands inside the table.
 
 ## Out of scope
 

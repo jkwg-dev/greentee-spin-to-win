@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   CODE_FORMAT,
   SLICES,
-  TRY_AGAIN_SLICE_INDEX,
   assertRewardTable,
   validateRewardTable,
   type Slice,
@@ -48,18 +47,16 @@ describe("reward table", () => {
     }
   });
 
-  it("has slice 10 as try_again with 0%", () => {
-    const s = SLICES[TRY_AGAIN_SLICE_INDEX - 1];
-    expect(s.rewardKey).toBe("try_again");
-    expect(s.probability).toBe(0);
+  it("has nine slices that all award something", () => {
+    expect(SLICES).toHaveLength(9);
+    expect(SLICES.every((s) => s.probability > 0 && s.rewardType !== undefined)).toBe(true);
   });
 
-  it("splits 75% discounts / 25% gifts / 0% nothing", () => {
+  it("splits 75% discounts / 25% gifts", () => {
     const by = (type: Slice["rewardType"]) =>
       SLICES.filter((s) => s.rewardType === type).reduce((a, s) => a + s.probability, 0);
     expect(by("discount")).toBe(75);
     expect(by("gift")).toBe(25);
-    expect(by("none")).toBe(0);
   });
 
   it("rejects a table that does not sum to 100", () => {
@@ -68,15 +65,14 @@ describe("reward table", () => {
     expect(() => assertRewardTable(broken)).toThrow(/Invalid reward table/);
   });
 
-  it("rejects a table where try_again is reachable", () => {
-    const broken = SLICES.map((s) =>
-      s.index === 1
-        ? { ...s, probability: 24 }
-        : s.index === TRY_AGAIN_SLICE_INDEX
-          ? { ...s, probability: 1 }
-          : s,
+  it("rejects a zero-probability slice", () => {
+    const broken = [
+      ...SLICES.map((s) => (s.index === 1 ? { ...s, probability: 25 } : s)),
+      { ...SLICES[0], index: 10, probability: 0 },
+    ];
+    expect(validateRewardTable(broken).join("\n")).toMatch(
+      /slice 10 must have a positive integer probability/,
     );
-    expect(validateRewardTable(broken).join("\n")).toMatch(/slice 10/);
   });
 });
 
@@ -96,12 +92,12 @@ describe("selectSlice boundaries", () => {
       // Just inside the lower edge and just inside the upper edge belong to this slice.
       expect(selectSlice(lower).index).toBe(index);
       expect(selectSlice(upper - EPS).index).toBe(index);
-      // The upper edge itself belongs to the next slice (there always is one, slice 10 aside).
+      // The upper edge itself belongs to the next slice, except for the last slice whose edge is 1.
       if (upper < 1) expect(selectSlice(upper).index).toBe(index + 1);
     },
   );
 
-  it("maps the largest possible roll to slice 9, never slice 10", () => {
+  it("maps the largest possible roll to the last slice, never outside the table", () => {
     expect(rollFromHex("ffffffff")).toBeLessThan(1);
     expect(selectSlice(rollFromHex("ffffffff")).index).toBe(9);
     expect(selectSlice(1 - EPS).index).toBe(9);
@@ -113,7 +109,7 @@ describe("selectSlice boundaries", () => {
     expect(() => selectSlice(Number.NaN)).toThrow(/out of range/);
   });
 
-  it("would throw rather than return slice 10 if the table were short", () => {
+  it("would throw rather than pick nothing if the table were short", () => {
     const short = SLICES.map((s) => (s.index === 9 ? { ...s, probability: 0 } : s));
     expect(() => selectSlice(0.999, short)).toThrow(/inconsistent/);
   });
@@ -158,8 +154,8 @@ describe("deriveOutcome over many orders", () => {
     counts.set(slice.index, (counts.get(slice.index) ?? 0) + 1);
   }
 
-  it("never lands on slice 10", () => {
-    expect(counts.get(TRY_AGAIN_SLICE_INDEX) ?? 0).toBe(0);
+  it("only ever lands inside the table", () => {
+    expect([...counts.keys()].every((i) => i >= 1 && i <= SLICES.length)).toBe(true);
   });
 
   it("tracks the probability table within one percentage point", () => {
@@ -209,9 +205,8 @@ describe("resolveForcedSlice", () => {
     }
   });
 
-  it("rejects slice 10 explicitly", () => {
+  it("rejects slice 10, which no longer exists", () => {
     expect(() => resolveForcedSlice(10)).toThrow(ForceSliceError);
-    expect(() => resolveForcedSlice(10)).toThrow(/Try Again/);
   });
 
   it("rejects out of range and non-integer input", () => {
