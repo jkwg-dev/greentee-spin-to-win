@@ -17,7 +17,10 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `app/routes/apps.spin.state.tsx`, `apps.spin.execute.tsx` — app proxy endpoints.
 - `scripts/setup-metafields.ts` — one-time metafield definitions.
 - `scripts/cleanup-test-data.ts` — deletes `Spin TEST` discounts and test spin records.
-- `extensions/` — checkout UI extension and theme app extension (later steps).
+- `extensions/spin-status/` — checkout UI extension (Preact + Polaris web components, API 2026-07).
+  `src/ThankYou.tsx` is the full flow on `purchase.thank-you.block.render`;
+  `src/OrderStatus.tsx` is display only on `customer-account.order-status.block.render`.
+- Theme app extension holding the wheel: step 4.
 
 ## Setup
 
@@ -62,6 +65,20 @@ the 300 CAD minimum only when `TEST_BYPASS_MIN_SUBTOTAL=true`.
 pnpm cleanup:test-data            # dry run
 pnpm cleanup:test-data -- --apply # delete Spin TEST discounts, clear test spin records
 ```
+
+## Checkout UI extension
+
+Both targets call `POST /api/spin/status` with the extension session token and share one
+result card, so the two pages can never disagree about a reward. The extension reads the app
+server URL from its `app_url` setting: set it in the checkout editor (Thank you page) and in the
+customer accounts editor (Order status page) after the first deploy. Network access must be
+allowed once in the Dev Dashboard under API access.
+
+The Thank you page shows three states: not eligible (encouraging banner), eligible (button
+linking to the signed spin URL), already spun (code or gift with expiry and a copy control).
+While the order is still being created it shows a "just a moment" banner and polls for about
+20 seconds. The Order status page renders the stored reward or nothing at all. A spin can only
+start from the Thank you page.
 
 ## Gifts
 

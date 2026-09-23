@@ -4,3 +4,4 @@ build
 pnpm-lock.yaml
 extensions/*/assets/spin-wheel.js
 CLAUDE.md
+extensions/*/dist

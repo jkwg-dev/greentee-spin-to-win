@@ -16,7 +16,7 @@
     "env": "shopify app env",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "react-router typegen && tsc --noEmit",
+    "typecheck": "react-router typegen && tsc --noEmit && tsc --noEmit -p extensions/spin-status/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "shopify": "shopify",

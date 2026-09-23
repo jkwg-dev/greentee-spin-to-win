@@ -1,0 +1,28 @@
+api_version = "2026-07"
+
+[[extensions]]
+type = "ui_extension"
+name = "GreenTee Spin to Win"
+handle = "spin-status"
+description = "Spin to Win eligibility and reward on the Thank you page; stored reward on the Order status page."
+
+# Full flow: eligibility, the spin button (signed link to the storefront spin page), the result.
+[[extensions.targeting]]
+target = "purchase.thank-you.block.render"
+module = "./src/ThankYou.tsx"
+
+# Display only: the stored reward, or nothing at all. A spin never starts here.
+[[extensions.targeting]]
+target = "customer-account.order-status.block.render"
+module = "./src/OrderStatus.tsx"
+
+[extensions.capabilities]
+# fetch() to the app server. Must also be allowed once in the Dev Dashboard (API access).
+network_access = true
+
+[extensions.settings]
+  [[extensions.settings.fields]]
+  key = "app_url"
+  type = "single_line_text_field"
+  name = "Spin to Win server URL"
+  description = "Base URL of the Spin to Win app server, e.g. https://spin.greenteegolf.ca (no trailing slash)."
