@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DISCOUNT_TITLE, SLICES } from "~/config/campaign";
+import { DISCOUNT_TITLE, GIFT_CATALOG, GIFT_TAGS, SLICES } from "~/config/campaign";
 import { loadEnv, type AppEnv } from "~/config/env.server";
 import type { AdminClient, GraphqlContext, UserError } from "~/lib/admin.server";
-import type { GiftIssuer } from "~/lib/gifts.server";
 import { setLogSink } from "~/lib/log.server";
 import { clearCampaignModeCache } from "~/lib/metafields.server";
 import { clearOrderCache } from "~/lib/orders.server";
 import { deriveOutcome } from "~/lib/outcome";
 import { verifySpinToken } from "~/lib/spin-token.server";
-import { SpinError, executeSpin, getSpinState, getSpinStatus } from "./spin.server";
+import { SpinError, confirmGift, executeSpin, getSpinState, getSpinStatus } from "./spin.server";
 
 const BASE_ENV = {
   CAMPAIGN_MODE: "live",
@@ -34,7 +33,8 @@ function orderIdWhere(pred: (index: number) => boolean): string {
   throw new Error("no order id found");
 }
 const DISCOUNT_ORDER = orderIdWhere((i) => i === 1); // 10% clubs
-const GIFT_ORDER = orderIdWhere((i) => SLICES[i - 1].rewardType === "gift");
+const GLOVE_ORDER = orderIdWhere((i) => SLICES[i - 1].rewardKey === "gift_gloves");
+const SOCKS_ORDER = orderIdWhere((i) => SLICES[i - 1].rewardKey === "gift_socks");
 
 interface RawOrder {
   id: string;
@@ -50,6 +50,48 @@ interface RawOrder {
     emailMarketingConsent: { marketingState: string } | null;
   } | null;
   metafield: { id: string; value: string } | null;
+}
+
+interface RawVariant {
+  id: string;
+  title: string;
+  inventoryQuantity: number;
+  availableForSale?: boolean;
+  options: Record<string, string>;
+}
+
+interface RawLine {
+  id: string;
+  variantId: string;
+  productId: string;
+  original: string;
+  discounted: string;
+}
+
+/** LH gloves in three colours for the given sizes: size -> [BLACK, CAMO1, CAMO2] stock. */
+function gloveVariants(stock: Record<string, [number, number, number]>): RawVariant[] {
+  const out: RawVariant[] = [];
+  let n = 1;
+  for (const [size, s] of Object.entries(stock)) {
+    for (const [i, color] of ["BLACK", "CAMO1(BLUE)", "CAMO2(ORANGE)"].entries()) {
+      out.push({
+        id: `gid://shopify/ProductVariant/g${n++}`,
+        title: `LH / ${color} / ${size}`,
+        inventoryQuantity: s[i],
+        options: { Hand: "LH", Color: color, Size: size },
+      });
+    }
+  }
+  return out;
+}
+
+function sockVariants(stock: Record<string, number>): RawVariant[] {
+  return Object.entries(stock).map(([colour, qty], i) => ({
+    id: `gid://shopify/ProductVariant/s${i + 1}`,
+    title: colour,
+    inventoryQuantity: qty,
+    options: { Colour: colour },
+  }));
 }
 
 function rawOrder(id: string, over: Partial<RawOrder> = {}): RawOrder {
@@ -78,6 +120,18 @@ class FakeAdmin implements AdminClient {
   failCreateWith: UserError[] | null = null;
   failMetafieldWrite = false;
   private nextDiscountId = 500;
+  /** Gift products: productId -> variants. */
+  products = new Map<string, RawVariant[]>();
+  /** Committed line items per order id. */
+  lines = new Map<string, RawLine[]>();
+  /** Staged variant per calculated order id. */
+  private edits = new Map<
+    string,
+    { orderId: string; variantId: string | null; discounted: boolean }
+  >();
+  private nextEdit = 900;
+  /** Make one order-edit mutation fail with userErrors. */
+  failEditAt: string | null = null;
 
   async request<T>(_query: string, vars: Record<string, unknown>, ctx: GraphqlContext): Promise<T> {
     this.calls.push({ op: ctx.operation, vars });
@@ -152,6 +206,123 @@ class FakeAdmin implements AdminClient {
           metafieldsSet: { metafields: [{ id: "gid://shopify/Metafield/1" }], userErrors: [] },
         } as T;
       }
+      case "giftProduct": {
+        const variants = this.products.get(String(vars.id));
+        if (!variants) return { product: null } as T;
+        return {
+          product: {
+            id: vars.id,
+            title: "Product",
+            featuredImage: { url: "https://cdn.example/gift.jpg" },
+            variants: {
+              nodes: variants.map((v) => ({
+                id: v.id,
+                title: v.title,
+                availableForSale: v.availableForSale ?? true,
+                inventoryQuantity: v.inventoryQuantity,
+                selectedOptions: Object.entries(v.options).map(([name, value]) => ({
+                  name,
+                  value,
+                })),
+              })),
+            },
+          },
+        } as T;
+      }
+      case "orderLines": {
+        const id = String(vars.id).split("/").pop()!;
+        return {
+          order: {
+            lineItems: {
+              nodes: (this.lines.get(id) ?? []).map((l) => ({
+                id: l.id,
+                quantity: 1,
+                variant: { id: l.variantId, product: { id: l.productId } },
+                originalTotalSet: { shopMoney: { amount: l.original } },
+                discountedTotalSet: { shopMoney: { amount: l.discounted } },
+              })),
+            },
+          },
+        } as T;
+      }
+      case "orderEditBegin": {
+        if (this.failEditAt === "orderEditBegin")
+          return {
+            orderEditBegin: {
+              calculatedOrder: null,
+              userErrors: [{ field: ["id"], message: "nope" }],
+            },
+          } as T;
+        const calcId = `gid://shopify/CalculatedOrder/${this.nextEdit++}`;
+        this.edits.set(calcId, {
+          orderId: String(vars.id).split("/").pop()!,
+          variantId: null,
+          discounted: false,
+        });
+        return { orderEditBegin: { calculatedOrder: { id: calcId }, userErrors: [] } } as T;
+      }
+      case "orderEditAddVariant": {
+        if (this.failEditAt === "orderEditAddVariant")
+          return {
+            orderEditAddVariant: {
+              calculatedLineItem: null,
+              userErrors: [{ field: ["variantId"], message: "nope" }],
+            },
+          } as T;
+        const edit = this.edits.get(String(vars.id))!;
+        edit.variantId = String(vars.variantId);
+        return {
+          orderEditAddVariant: {
+            calculatedLineItem: { id: "gid://shopify/CalculatedLineItem/1" },
+            userErrors: [],
+          },
+        } as T;
+      }
+      case "orderEditAddLineItemDiscount": {
+        const edit = this.edits.get(String(vars.id))!;
+        const discount = vars.discount as { percentValue: number };
+        edit.discounted = discount.percentValue === 100;
+        return {
+          orderEditAddLineItemDiscount: { addedDiscountStagedChange: { id: "x" }, userErrors: [] },
+        } as T;
+      }
+      case "orderEditCommit": {
+        if (this.failEditAt === "orderEditCommit")
+          return {
+            orderEditCommit: { order: null, userErrors: [{ field: ["id"], message: "nope" }] },
+          } as T;
+        const edit = this.edits.get(String(vars.id))!;
+        const productId =
+          [...this.products.entries()].find(([, vs]) =>
+            vs.some((v) => v.id === edit.variantId),
+          )?.[0] ?? "";
+        const lines = this.lines.get(edit.orderId) ?? [];
+        lines.push({
+          id: `gid://shopify/LineItem/${100 + lines.length}`,
+          variantId: edit.variantId!,
+          productId,
+          original: "39.99",
+          discounted: edit.discounted ? "0.0" : "39.99",
+        });
+        this.lines.set(edit.orderId, lines);
+        return {
+          orderEditCommit: { order: { id: `gid://shopify/Order/${edit.orderId}` }, userErrors: [] },
+        } as T;
+      }
+      case "tagsAdd":
+      case "tagsRemove": {
+        const id = String(vars.id).split("/").pop()!;
+        const order = this.orders.get(id);
+        if (order) {
+          const tags = vars.tags as string[];
+          const next =
+            ctx.operation === "tagsAdd"
+              ? [...new Set([...order.tags, ...tags])]
+              : order.tags.filter((t) => !tags.includes(t));
+          this.orders.set(id, { ...order, tags: next });
+        }
+        return { [ctx.operation]: { userErrors: [] } } as T;
+      }
       default:
         throw new Error(`unexpected operation ${ctx.operation}`);
     }
@@ -162,13 +333,12 @@ class FakeAdmin implements AdminClient {
   }
 }
 
-function deps(admin: FakeAdmin, envOver: Record<string, string> = {}, giftIssuer?: GiftIssuer) {
+function deps(admin: FakeAdmin, envOver: Record<string, string> = {}) {
   const env: AppEnv = loadEnv({ ...BASE_ENV, ...envOver });
   return {
     admin,
     env,
     now: () => NOW,
-    giftIssuer,
     fetchOrderOpts: { baseDelayMs: 0, sleep: async () => {} },
   };
 }
@@ -455,41 +625,40 @@ describe("executeSpin: gates", () => {
     expect(status).toMatchObject({ alreadySpun: true, result: { expired: true } });
   });
 
-  it("gift slices fail loudly until issuance is implemented, and write nothing", async () => {
+  it("a gift win records pending and tags the order before any order edit", async () => {
     const admin = new FakeAdmin();
-    admin.orders.set(GIFT_ORDER, rawOrder(GIFT_ORDER));
-    await expect(executeSpin(GIFT_ORDER, {}, deps(admin))).rejects.toMatchObject({
-      status: 503,
-      code: "gift_unavailable",
-    });
-    expect(admin.ops("metafieldsSet")).toHaveLength(0);
-    expect(admin.ops("discountCodeBasicCreate")).toHaveLength(0);
-  });
-
-  it("records a gift when an issuer is provided", async () => {
-    const admin = new FakeAdmin();
-    admin.orders.set(GIFT_ORDER, rawOrder(GIFT_ORDER));
-    const issuer: GiftIssuer = {
-      async issue(input) {
-        return {
-          variantId: "gid://shopify/ProductVariant/9",
-          lineItemId: null,
-          orderEditId: null,
-          reference: input.giftReference,
-        };
-      },
-    };
-    const outcome = await executeSpin(GIFT_ORDER, {}, deps(admin, {}, issuer));
-    expect(outcome).toMatchObject({
-      result: {
-        rewardType: "gift",
-        code: null,
-        gift: { variantId: "gid://shopify/ProductVariant/9" },
-      },
-    });
-    expect((outcome as { result: { gift: { reference: string } } }).result.gift.reference).toMatch(
-      /^GFJ-/,
+    admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
+    admin.products.set(
+      GIFT_CATALOG.gift_gloves.productId,
+      gloveVariants({ "22": [2, 5, 1], "23": [0, -4, 0] }),
     );
+    const outcome = await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    expect(outcome).toMatchObject({
+      result: { rewardType: "gift", code: null, gift: { status: "pending" } },
+      giftOffer: {
+        customerOption: "Size",
+        preselect: "22",
+        anyAvailable: true,
+        imageUrl: "https://cdn.example/gift.jpg",
+      },
+    });
+    const offer = (outcome as unknown as { giftOffer: { choices: unknown[] } }).giftOffer;
+    expect(offer.choices).toEqual([
+      { value: "22", available: true, stock: 8 },
+      { value: "23", available: false, stock: 0 },
+    ]);
+    const ops = admin.calls
+      .map((c) => c.op)
+      .filter((o) => !["shopCampaignMode", "order"].includes(o));
+    expect(ops).toEqual(["metafieldsSet", "tagsAdd", "giftProduct"]);
+    expect(admin.orders.get(GLOVE_ORDER)!.tags).toContain(GIFT_TAGS.pending);
+    const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
+    expect(record.gift).toMatchObject({
+      status: "pending",
+      productId: GIFT_CATALOG.gift_gloves.productId,
+      variantId: null,
+    });
+    expect(record.gift.reference).toMatch(/^GFJ-/);
   });
 });
 
@@ -500,7 +669,13 @@ describe("executeSpin: test users and forceSlice", () => {
     await expect(executeSpin(DISCOUNT_ORDER, { forceSlice: 3 }, deps(admin))).rejects.toMatchObject(
       { status: 403, code: "force_not_allowed" },
     );
+    // Nothing written anywhere: no discount, no metafield, and the order is still unspun.
     expect(admin.ops("discountCodeBasicCreate")).toHaveLength(0);
+    expect(admin.ops("metafieldsSet")).toHaveLength(0);
+    expect(admin.orders.get(DISCOUNT_ORDER)!.metafield).toBeNull();
+    // A normal spin afterwards still works.
+    const normal = await executeSpin(DISCOUNT_ORDER, {}, deps(admin));
+    expect(normal).toMatchObject({ alreadySpun: false, forced: false, result: { sliceIndex: 1 } });
   });
 
   it("lets a tester force a slice, flags the record, and uses the TEST prefixes", async () => {
@@ -605,5 +780,192 @@ describe("getSpinState", () => {
         rewardType: s.rewardType,
       })),
     );
+  });
+});
+
+describe("confirmGift", () => {
+  function gloveOrder(stock: Record<string, [number, number, number]>) {
+    const admin = new FakeAdmin();
+    admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
+    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants(stock));
+    return admin;
+  }
+
+  it("adds the chosen size in the colour with most stock at 100% off, then flips the tag", async () => {
+    const admin = gloveOrder({ "22": [2, 5, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    admin.calls.length = 0;
+
+    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(done).toMatchObject({
+      result: {
+        gift: { status: "added", variantTitle: "LH / CAMO1(BLUE) / 22", selection: { Size: "22" } },
+      },
+      giftOffer: null,
+    });
+
+    const ops = admin.calls
+      .map((c) => c.op)
+      .filter((o) => !["shopCampaignMode", "order"].includes(o));
+    expect(ops).toEqual([
+      "orderLines", // idempotency check first
+      "giftProduct",
+      "orderEditBegin",
+      "orderEditAddVariant",
+      "orderEditAddLineItemDiscount",
+      "orderEditCommit",
+      "orderLines", // read back the committed line
+      "metafieldsSet",
+      "tagsAdd",
+      "tagsRemove",
+    ]);
+    const discount = admin.ops("orderEditAddLineItemDiscount")[0].vars.discount;
+    expect(discount).toEqual({ percentValue: 100, description: "Spin to Win gift" });
+    expect(admin.ops("orderEditCommit")[0].vars.staffNote).toMatch(/^Spin to Win gift GFJ-/);
+
+    const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
+    expect(record.gift).toMatchObject({
+      status: "added",
+      variantId: "gid://shopify/ProductVariant/g2",
+      lineItemId: "gid://shopify/LineItem/100",
+      orderEditId: "gid://shopify/CalculatedOrder/900",
+    });
+    expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.added]);
+  });
+
+  it("adds socks immediately with no selection, picking the deepest colour", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(SOCKS_ORDER, rawOrder(SOCKS_ORDER));
+    admin.products.set(
+      GIFT_CATALOG.gift_socks.productId,
+      sockVariants({ Black: 1, Beige: 6, Navy: 3 }),
+    );
+    const spun = await executeSpin(SOCKS_ORDER, {}, deps(admin));
+    expect(spun).toMatchObject({
+      giftOffer: { customerOption: null, choices: null, anyAvailable: true },
+    });
+    const done = await confirmGift(SOCKS_ORDER, {}, deps(admin));
+    expect(done.result.gift).toMatchObject({ status: "added", variantTitle: "Beige" });
+  });
+
+  it("does not edit the order when every colour of the chosen size is out of stock or oversold", async () => {
+    const admin = gloveOrder({ "22": [0, -3, 0], "23": [4, 0, 0] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    admin.calls.length = 0;
+    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(done).toMatchObject({
+      result: { gift: { status: "unavailable" } },
+      message: expect.stringMatching(/contact us/i),
+    });
+    expect(admin.ops("orderEditBegin")).toHaveLength(0);
+    expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.pending]);
+    const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
+    expect(record.gift.reason).toMatch(/no_stock for {"Size":"22"}/);
+    // Never substitutes: size 23 was in stock and was not used.
+    expect(admin.lines.get(GLOVE_ORDER) ?? []).toHaveLength(0);
+    // Stock comes back: a retry adds it.
+    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants({ "22": [1, 0, 0] }));
+    const retry = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(retry.result.gift).toMatchObject({ status: "added", variantTitle: "LH / BLACK / 22" });
+  });
+
+  it("requires a size for gloves and rejects an unknown size", async () => {
+    const admin = gloveOrder({ "22": [1, 1, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    await expect(confirmGift(GLOVE_ORDER, {}, deps(admin))).rejects.toMatchObject({
+      status: 400,
+      code: "selection_required",
+    });
+    await expect(
+      confirmGift(GLOVE_ORDER, { selection: { Size: "99" } }, deps(admin)),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "invalid_selection",
+    });
+    expect(admin.ops("orderEditBegin")).toHaveLength(0);
+  });
+
+  it("is idempotent: a second confirm returns the added gift without another edit", async () => {
+    const admin = gloveOrder({ "22": [1, 1, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    admin.calls.length = 0;
+    const again = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(again.result.gift).toMatchObject({ status: "added" });
+    expect(admin.ops("orderEditBegin")).toHaveLength(0);
+    expect(admin.lines.get(GLOVE_ORDER)).toHaveLength(1);
+  });
+
+  it("adopts a gift line that is already on the order (crash after commit) instead of adding another", async () => {
+    const admin = gloveOrder({ "22": [1, 1, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    admin.lines.set(GLOVE_ORDER, [
+      {
+        id: "gid://shopify/LineItem/77",
+        variantId: "gid://shopify/ProductVariant/g1",
+        productId: GIFT_CATALOG.gift_gloves.productId,
+        original: "39.99",
+        discounted: "0.0",
+      },
+    ]);
+    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(done.result.gift).toMatchObject({ status: "added" });
+    expect(admin.ops("orderEditBegin")).toHaveLength(0);
+    const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
+    expect(record.gift).toMatchObject({
+      lineItemId: "gid://shopify/LineItem/77",
+      variantId: "gid://shopify/ProductVariant/g1",
+    });
+    expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.added]);
+  });
+
+  it("leaves the record pending and the tag in place when the order edit fails, so a retry is safe", async () => {
+    const admin = gloveOrder({ "22": [1, 1, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    admin.failEditAt = "orderEditCommit";
+    await expect(
+      confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin)),
+    ).rejects.toMatchObject({
+      status: 503,
+      code: "gift_edit_failed",
+      retryable: true,
+    });
+    const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
+    expect(record.gift.status).toBe("pending");
+    expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.pending]);
+    admin.failEditAt = null;
+    const retry = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    expect(retry.result.gift?.status).toBe("added");
+  });
+
+  it("refuses to confirm on an unspun order or a discount win", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    await expect(confirmGift(DISCOUNT_ORDER, {}, deps(admin))).rejects.toMatchObject({
+      status: 409,
+      code: "not_spun",
+    });
+    await executeSpin(DISCOUNT_ORDER, {}, deps(admin));
+    await expect(confirmGift(DISCOUNT_ORDER, {}, deps(admin))).rejects.toMatchObject({
+      status: 409,
+      code: "not_a_gift",
+    });
+  });
+
+  it("keeps the Thank you page link alive for a pending gift and drops it once added", async () => {
+    const admin = gloveOrder({ "22": [1, 1, 1] });
+    await executeSpin(GLOVE_ORDER, {}, deps(admin));
+    clearOrderCache();
+    const pending = await getSpinStatus(GLOVE_ORDER, deps(admin));
+    expect(pending).toMatchObject({ alreadySpun: true, result: { gift: { status: "pending" } } });
+    expect(typeof (pending as { spinUrl?: string }).spinUrl).toBe("string");
+    const state = await getSpinState(GLOVE_ORDER, deps(admin));
+    expect((state as { giftOffer?: unknown }).giftOffer).toMatchObject({ customerOption: "Size" });
+
+    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    clearOrderCache();
+    const added = await getSpinStatus(GLOVE_ORDER, deps(admin));
+    expect(added).toMatchObject({ alreadySpun: true, result: { gift: { status: "added" } } });
+    expect("spinUrl" in added).toBe(false);
   });
 });

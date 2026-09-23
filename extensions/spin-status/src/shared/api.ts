@@ -9,7 +9,11 @@ export interface PublicSpinResult {
   readonly rewardLabel: string;
   readonly rewardType: "discount" | "gift";
   readonly code: string | null;
-  readonly gift: { readonly variantId: string; readonly reference: string } | null;
+  readonly gift: {
+    readonly status: "pending" | "added" | "unavailable";
+    readonly variantTitle: string | null;
+    readonly selection: Readonly<Record<string, string>> | null;
+  } | null;
   readonly spunAt: string;
   readonly expiresAt: string;
   readonly expired: boolean;
@@ -21,7 +25,13 @@ export type SpinView =
   | { readonly kind: "pending" }
   | { readonly kind: "eligible"; readonly spinUrl: string | null; readonly testMode: boolean }
   | { readonly kind: "ineligible"; readonly message: string; readonly testMode: boolean }
-  | { readonly kind: "spun"; readonly result: PublicSpinResult; readonly testMode: boolean }
+  | {
+      readonly kind: "spun";
+      readonly result: PublicSpinResult;
+      readonly testMode: boolean;
+      /** Thank you page only: link back to the spin page while a gift is still pending. */
+      readonly spinUrl: string | null;
+    }
   | { readonly kind: "error"; readonly retryable: boolean; readonly detail: string };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -43,6 +53,7 @@ export function parseStatus(body: unknown): SpinView {
     return {
       kind: "spun",
       testMode,
+      spinUrl: typeof body.spinUrl === "string" ? body.spinUrl : null,
       result: {
         sliceIndex: Number(r.sliceIndex),
         rewardKey: String(r.rewardKey ?? ""),
@@ -50,7 +61,16 @@ export function parseStatus(body: unknown): SpinView {
         rewardType: r.rewardType === "gift" ? "gift" : "discount",
         code: typeof r.code === "string" ? r.code : null,
         gift: isRecord(r.gift)
-          ? { variantId: String(r.gift.variantId ?? ""), reference: String(r.gift.reference ?? "") }
+          ? {
+              status:
+                r.gift.status === "added" || r.gift.status === "unavailable"
+                  ? r.gift.status
+                  : "pending",
+              variantTitle: typeof r.gift.variantTitle === "string" ? r.gift.variantTitle : null,
+              selection: isRecord(r.gift.selection)
+                ? (r.gift.selection as Record<string, string>)
+                : null,
+            }
           : null,
         spunAt: String(r.spunAt ?? ""),
         expiresAt: r.expiresAt,

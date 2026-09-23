@@ -27,7 +27,6 @@
     stage: root.querySelector("[data-stage]"),
     wheel: root.querySelector("[data-wheel]"),
     labels: root.querySelector("[data-labels]"),
-    rivets: root.querySelector("[data-rivets]"),
     spin: root.querySelector("[data-spin]"),
     retry: root.querySelector("[data-retry]"),
     result: root.querySelector("[data-result]"),
@@ -84,8 +83,16 @@
     loadFailed: "We couldn't load your spin. Please try again.",
     spinFailed: "We couldn't complete your spin. Nothing was lost. Press Try again.",
     stillPending: "Your order is still being confirmed. Please try again in a moment.",
+    forceDenied: "That option isn't available. Press Try again to spin.",
     keepSafe:
       "Keep this code somewhere safe. You can also find it later through the link in your order confirmation email.",
+    giftIntro: "It's on us. Added to this order at no charge.",
+    giftConfirm: "Add to my order",
+    giftAdding: "Adding to your order…",
+    giftAdded: "It ships with the rest of your items at no charge.",
+    giftFailed: "We couldn't add your gift just now. Nothing was lost. Please try again.",
+    giftOfferMissing: "We couldn't load your gift options. Please try again.",
+    giftPendingElsewhere: "Your gift hasn't been added yet. Contact us and we'll sort it out.",
   };
 
   var PENDING_DELAYS = [1500, 2500, 4000, 6000, 8000];
@@ -206,8 +213,8 @@
       pointerAngle: 0,
       radius: 1,
       borderWidth: 0,
-      lineWidth: 1.5,
-      lineColor: cfg.colors.gold,
+      lineWidth: 2,
+      lineColor: "#ffffff",
       rotationResistance: 0,
       rotationSpeedMax: 320,
       onRest: onWheelRest,
@@ -215,7 +222,6 @@
     // Rest position: slice 1 centred under the pointer, as in the design.
     wheel.rotation = -SLICE_DEG / 2;
     buildLabels(slices);
-    buildRivets(slices.length);
     wheelReady = true;
     show(els.stage, true);
     syncLabels(true);
@@ -243,19 +249,6 @@
       layer.appendChild(label);
       return label;
     });
-  }
-
-  function buildRivets(count) {
-    var layer = els.rivets;
-    while (layer.firstChild) layer.removeChild(layer.firstChild);
-    for (var i = 0; i < count; i++) {
-      // Slice boundaries sit at ±18° from the pointer whenever the wheel is at rest.
-      var angle = ((i * SLICE_DEG + SLICE_DEG / 2) * Math.PI) / 180;
-      var dot = el("span", "gt-spin__rivet");
-      dot.style.left = 50 + 49.2 * Math.sin(angle) + "%";
-      dot.style.top = 50 - 49.2 * Math.cos(angle) + "%";
-      layer.appendChild(dot);
-    }
   }
 
   var lastRotation = null;
@@ -348,7 +341,13 @@
     els.retry.disabled = false;
   }
 
-  function renderResult(result) {
+  /**
+   * Renders the reward. For gifts, `extras.offer` (from the state or execute
+   * response) drives the confirm step; `extras.message` is a server line such
+   * as the out-of-stock notice.
+   */
+  function renderResult(result, extras) {
+    extras = extras || {};
     setStatus("", false);
     show(els.spin, false);
     show(els.retry, false);
@@ -359,14 +358,7 @@
     var expiry = formatExpiry(result.expiresAt);
 
     if (result.rewardType === "gift") {
-      box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
-      box.appendChild(
-        el(
-          "p",
-          "gt-spin__note",
-          "We've added it to your order at no charge. It ships with the rest of your items.",
-        ),
-      );
+      renderGift(box, result, extras.offer || null, extras.message || null);
     } else if (result.expired) {
       box.appendChild(el("h2", "gt-spin__result-heading", "Your Spin to Win code has expired"));
       box.appendChild(el("div", "gt-spin__code", result.code || ""));
@@ -400,7 +392,17 @@
     if (result.testMode) box.appendChild(el("span", "gt-spin__badge", "Test spin"));
 
     if (orderUrl) {
-      var back = el("a", "gt-spin__button gt-spin__button--gold gt-spin__back", cfg.backLabel);
+      var giftPending =
+        result.rewardType === "gift" && (!result.gift || result.gift.status !== "added");
+      // While a gift still needs confirming, the back link stays quiet so the
+      // confirm button is the one obvious action on the card.
+      var back = el(
+        "a",
+        giftPending
+          ? "gt-spin__back gt-spin__back--quiet"
+          : "gt-spin__button gt-spin__button--secondary gt-spin__back",
+        cfg.backLabel,
+      );
       back.setAttribute("href", orderUrl);
       box.appendChild(back);
     }
@@ -413,6 +415,127 @@
     } catch (e) {
       /* ignore */
     }
+  }
+
+  function renderGift(box, result, offer, message) {
+    var gift = result.gift || { status: "pending" };
+
+    if (gift.status === "added") {
+      box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+      var what = gift.variantTitle
+        ? result.rewardLabel + " (" + gift.variantTitle + ")"
+        : result.rewardLabel;
+      box.appendChild(el("p", "gt-spin__note", "Added to your order: " + what + "."));
+      box.appendChild(el("p", "gt-spin__note", COPY.giftAdded));
+      return;
+    }
+
+    // Pending: the card is the confirm step. Image, name, chips (gloves), one primary button.
+    if (offer && offer.imageUrl) {
+      var img = document.createElement("img");
+      img.className = "gt-spin__gift-image";
+      img.src = offer.imageUrl;
+      img.alt = "";
+      img.loading = "lazy";
+      box.appendChild(img);
+    }
+    box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+    if (offer && offer.note) box.appendChild(el("p", "gt-spin__note", offer.note));
+    if (message) box.appendChild(el("p", "gt-spin__note gt-spin__note--warn", message));
+
+    if (!offer) {
+      box.appendChild(el("p", "gt-spin__note", COPY.giftOfferMissing));
+      var reloadBtn = el("button", "gt-spin__button gt-spin__gift-confirm", "Try again");
+      reloadBtn.type = "button";
+      reloadBtn.addEventListener("click", function () {
+        if (!busy) load();
+      });
+      box.appendChild(reloadBtn);
+      return;
+    }
+
+    if (!offer.anyAvailable) {
+      if (!message)
+        box.appendChild(el("p", "gt-spin__note gt-spin__note--warn", COPY.giftPendingElsewhere));
+      return;
+    }
+
+    var selection = null;
+    if (offer.customerOption && offer.choices) {
+      var current = offer.preselect;
+      var group = el("div", "gt-spin__choices");
+      group.setAttribute("role", "radiogroup");
+      group.setAttribute("aria-label", "Choose your " + offer.customerOption);
+      box.appendChild(
+        el("p", "gt-spin__choice-label", "Choose your " + offer.customerOption.toLowerCase()),
+      );
+      var chips = offer.choices.map(function (choice) {
+        var chip = el("button", "gt-spin__chip", choice.value);
+        chip.type = "button";
+        chip.setAttribute("role", "radio");
+        chip.setAttribute("data-value", choice.value);
+        if (!choice.available) {
+          chip.disabled = true;
+          chip.setAttribute("aria-disabled", "true");
+          chip.title = "Sold out";
+        }
+        chip.addEventListener("click", function () {
+          if (chip.disabled) return;
+          current = choice.value;
+          chips.forEach(function (c) {
+            c.setAttribute("aria-checked", c === chip ? "true" : "false");
+            c.classList.toggle("gt-spin__chip--selected", c === chip);
+          });
+        });
+        group.appendChild(chip);
+        return chip;
+      });
+      chips.forEach(function (c) {
+        var on = c.getAttribute("data-value") === current;
+        c.setAttribute("aria-checked", on ? "true" : "false");
+        c.classList.toggle("gt-spin__chip--selected", on);
+      });
+      box.appendChild(group);
+      selection = function () {
+        var out = {};
+        out[offer.customerOption] = current;
+        return current ? out : null;
+      };
+    }
+
+    var errorLine = el("p", "gt-spin__note gt-spin__note--warn", "");
+    errorLine.hidden = true;
+    var confirm = el("button", "gt-spin__button gt-spin__gift-confirm", COPY.giftConfirm);
+    confirm.type = "button";
+    confirm.addEventListener("click", function () {
+      confirmGift(confirm, errorLine, selection ? selection() : null);
+    });
+    box.appendChild(confirm);
+    box.appendChild(el("p", "gt-spin__note gt-spin__note--small", COPY.giftIntro));
+    box.appendChild(errorLine);
+  }
+
+  function confirmGift(button, errorLine, selection) {
+    if (busy) return Promise.resolve();
+    busy = true;
+    button.disabled = true;
+    var label = button.textContent;
+    button.textContent = COPY.giftAdding;
+    errorLine.hidden = true;
+    var body = { token: token };
+    if (selection) body.selection = selection;
+    return api("/gift", { method: "POST", body: body }).then(function (r) {
+      busy = false;
+      if (r.status === 401 || r.status === 403) return renderInvalid();
+      if (r.ok && r.body && r.body.result) {
+        return renderResult(r.body.result, { offer: r.body.giftOffer, message: r.body.message });
+      }
+      button.disabled = false;
+      button.textContent = label;
+      errorLine.textContent =
+        r.body && r.body.message && r.status < 500 ? r.body.message : COPY.giftFailed;
+      errorLine.hidden = false;
+    });
   }
 
   function copyText(text, button) {
@@ -479,7 +602,7 @@
         buildWheel(s.wheel);
         if (s.alreadySpun && s.result) {
           placeAt(s.result.sliceIndex);
-          return renderResult(s.result);
+          return renderResult(s.result, { offer: s.giftOffer });
         }
         if (s.eligible === false) return renderIneligible(s.message);
         if (s.eligible === true) return renderReady();
@@ -506,12 +629,18 @@
     if (forceSlice) body.forceSlice = forceSlice;
 
     return api("/execute", { method: "POST", body: body }).then(function (r) {
+      if (r.status === 403 && r.body && r.body.error === "force_not_allowed") {
+        // A real customer edited the URL. Drop the parameter, say so plainly,
+        // and let Try again run a normal spin. The wheel is stopped, not stuck.
+        wheel.stop();
+        busy = false;
+        forceSlice = null;
+        return renderError(COPY.forceDenied, "spin");
+      }
       if (r.status === 401 || r.status === 403) {
         wheel.stop();
         busy = false;
-        return r.body && r.body.error === "force_not_allowed"
-          ? renderError("forceSlice is only available to test users.", "spin")
-          : renderInvalid();
+        return renderInvalid();
       }
       if (r.ok && r.body && r.body.campaignOpen === false) {
         wheel.stop();
@@ -526,9 +655,10 @@
         return renderError(msg, "spin");
       }
       var result = r.body.result;
+      var offer = r.body.giftOffer || null;
       landOn(result.sliceIndex, function () {
         busy = false;
-        renderResult(result);
+        renderResult(result, { offer: offer });
       });
     });
   }

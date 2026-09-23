@@ -75,7 +75,14 @@ function Extension() {
       );
 
     case "spun":
-      return <SpinResult result={state.result} testMode={state.testMode} surface="thank-you" />;
+      return (
+        <SpinResult
+          result={state.result}
+          testMode={state.testMode}
+          surface="thank-you"
+          spinUrl={state.spinUrl}
+        />
+      );
 
     case "error":
       // A misconfiguration (bad URL, rejected token) is not the customer's problem: show nothing.

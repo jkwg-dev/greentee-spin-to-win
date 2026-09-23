@@ -80,15 +80,60 @@ Each discount reward creates one single use code through `discountCodeBasicCreat
 ### Gift rewards
 
 Gifts do not create a discount and are not a claim reference. When a gift slice is won, the app
-adds the real product variant to the order through the Order Editing API and applies a 100 percent
-line discount to that line, so the customer pays nothing and the order shows the gift explicitly.
-This needs the `write_order_edits` scope. Variant selection for sized items is specified
-separately.
+adds the real product variant to the order through the Order Editing API with a 100 percent line
+discount, so the customer pays nothing and the order shows the gift explicitly. This needs the
+`write_order_edits` scope (and `read_products` for variants and stock).
 
-Gift issuance sits behind the `GiftIssuer` interface in `app/lib/gifts.server.ts`. Until the
-Order Editing issuer exists, a gift outcome returns a retryable 503 and writes nothing; there is
-no interim claim-reference fallback. The derived `GFJ-` reference is kept only as the idempotency
-handle for the order edit (stored as a line item custom attribute), never shown as a claim code.
+All product and variant identity lives in `GIFT_CATALOG` in `app/config/campaign.ts` and nowhere
+else. The socks product is provisional and may change.
+
+| Reward        | Product                                   | Options                                   | Customer chooses |
+|---------------|-------------------------------------------|-------------------------------------------|------------------|
+| `gift_gloves` | GFJ Classic Glove (Unisex), 24 variants   | Hand (always LH), Color, Size 18 to 25     | Size             |
+| `gift_socks`  | GFJ Jacquard Ankle High Socks, 3 variants | Colour: Black, Beige, Navy                 | nothing          |
+| `gift_brush`  | GFJ x GreenTee Club Cleaning Brush, 4     | Colour: White, Black, Green, Orange        | nothing          |
+
+The app picks the colour with the most stock (in the chosen size for gloves). Hand is fixed at LH
+and never shown as a choice. Customer copy for the glove must say it is left hand (LH) and that
+the colour is randomly selected.
+
+#### Flow
+
+1. On a gift result, `executeSpin` writes the spin metafield with `gift.status = "pending"` and
+   tags the order `gift-pending` before anything else. Nothing is added to the order yet.
+2. The spin page shows the gift step. Glove only: a size selector with an in-stock size
+   preselected (the one with most stock) and sold-out sizes disabled. Socks and brush: just the
+   confirm button.
+3. `POST /apps/spin/gift` (`confirmGift`) resolves the variant, then `orderEditBegin`,
+   `orderEditAddVariant`, `orderEditAddLineItemDiscount` (100%), `orderEditCommit` with
+   `notifyCustomer: false` and a staff note carrying the `GFJ-` reference.
+4. It records `variantId`, `variantTitle`, `lineItemId`, `orderEditId` and the selection in the
+   metafield with `gift.status = "added"`, then adds `gift-added` and removes `gift-pending`.
+
+The Thank you page keeps its spin link while a gift is pending so the customer can come back and
+finish. The order status page shows the pending state as text only.
+
+#### Stock rules
+
+- A variant counts only when `inventoryQuantity > 0` and `availableForSale` is true. Negative
+  inventory (oversells) is excluded.
+- If every variant of the won gift is unavailable, do not edit the order. Show a message asking
+  the customer to contact us, leave the tag at `gift-pending`, and record the reason in the
+  metafield (`gift.status = "unavailable"`). A later confirm may succeed if stock returns.
+- Never substitute a different gift product or size. Staff handle those cases manually.
+
+#### Idempotency
+
+`confirmGift` returns an added gift as is. Before editing, it looks for a line of the gift
+product that is already fully discounted (a crash between commit and the metafield write) and
+adopts it rather than adding another. An order edit that fails leaves the record pending and the
+tag in place, so a retry is safe.
+
+#### Why gift-pending matters
+
+The customer may close the page before confirming, especially on the glove step. Staff use the
+tag to find anyone who dropped off, so it is written before the order edit and only flipped to
+`gift-added` after the edit commits.
 
 The spin always happens on the Thank you page moments after checkout, so the order is always
 unfulfilled at spin time. Do not build a fulfilled-order fallback path.
@@ -105,12 +150,14 @@ Order status page (same extension, customer-account.order-status.block.render)
   -> same status call; renders the stored result only, or nothing at all
 
 Spin page (storefront page + theme app extension block)
-  -> GET  /apps/spin/state?token=...     verify token, return current state
+  -> GET  /apps/spin/state?token=...     verify token, return current state (+ gift offer)
   -> POST /apps/spin/execute             { token }  performs the spin
+  -> POST /apps/spin/gift                { token, selection? }  adds a won gift to the order
   -> renders the actual wheel in HTML and JS
 
 Backend (Shopify app server)
-  -> Admin GraphQL: order lookup, metafieldsSet, discountCodeBasicCreate
+  -> Admin GraphQL: order lookup, metafieldsSet, discountCodeBasicCreate,
+     product variants + stock, orderEdit*, tagsAdd/tagsRemove
   -> Omnisend: contact upsert + custom event (best effort, never blocking)
 ```
 
@@ -122,10 +169,18 @@ The spin page verifies the token server side; it never trusts an order ID from t
 
 ### Required scopes
 
-`write_orders` (order lookup plus writing the order metafield; write includes read),
-`write_discounts`, and `write_order_edits` once gift issuance lands. Note that order access only
-covers orders from the last 60 days, which is sufficient here. Do not request `read_all_orders`;
-it needs Shopify approval.
+Each scope is tied to a specific operation. Do not add one without adding its row here.
+
+| Scope               | Needed by                                                                 |
+|---------------------|---------------------------------------------------------------------------|
+| `write_orders`      | `metafieldsSet` on an Order (the spin record) and `tagsAdd` / `tagsRemove` on an Order (`gift-pending`, `gift-added`). Write includes read, so it also covers the `order` lookup. |
+| `write_discounts`   | `discountCodeBasicCreate`; includes read for `codeDiscountNodeByCode` on a duplicate. |
+| `write_order_edits` | `orderEditBegin`, `orderEditAddVariant`, `orderEditAddLineItemDiscount`, `orderEditCommit`. Order editing has its own scope; `write_orders` does not grant it. |
+| `read_products`     | `product` with `variants` (`availableForSale`, `inventoryQuantity`, `selectedOptions`, `featuredImage`) for gift stock and the size list. Read only; nothing writes products. |
+
+Order access only covers orders from the last 60 days, which is sufficient here. Do not request
+`read_all_orders`; it needs Shopify approval. `pnpm check:scopes` compares the granted scopes
+with `shopify.app.toml`.
 
 ## Data model
 
@@ -159,7 +214,9 @@ Value shape:
 
 There is no `notified` field: the code is delivered on screen and nowhere else. The record also
 carries `testMode` and `forced` (see Test mode). For gifts, `rewardType` is `gift`, `code` and
-`discountNodeId` are null, and `gift` holds `{ variantId, lineItemId, orderEditId, reference }`.
+`discountNodeId` are null, and `gift` holds `{ status: "pending" | "added" | "unavailable",
+productId, variantId, variantTitle, lineItemId, orderEditId, reference, selection, reason,
+updatedAt }`.
 
 ## Idempotency: the important part
 

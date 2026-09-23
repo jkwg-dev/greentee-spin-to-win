@@ -16,8 +16,9 @@ include_config_on_deploy = true
 # write_orders: order lookup plus writing the greentee_spin.result order metafield
 # (metafieldsSet needs write access to the owner resource; write includes read).
 # write_discounts: discountCodeBasicCreate, and reading a code back on a duplicate.
-# write_order_edits will be added when gift issuance (Order Editing API) lands.
-scopes = "write_orders,write_discounts"
+# write_order_edits: adding the gift variant at 100% off through the Order Editing API.
+# read_products: gift variants, availability and inventory quantities.
+scopes = "write_orders,write_discounts,write_order_edits,read_products"
 use_legacy_install_flow = false
 
 [auth]

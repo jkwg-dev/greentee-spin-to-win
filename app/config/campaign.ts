@@ -248,3 +248,74 @@ export const SPIN_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 
 /** Default storefront path of the page that hosts the wheel block. */
 export const DEFAULT_SPIN_PAGE_PATH = "/pages/spin-to-win";
+
+/* ------------------------------------------------------------------ gifts */
+
+/** Order tags that let staff find customers who dropped off before the gift was added. */
+export const GIFT_TAGS = {
+  pending: "gift-pending",
+  added: "gift-added",
+} as const;
+
+export type GiftKey = Extract<RewardKey, "gift_gloves" | "gift_socks" | "gift_brush">;
+
+export interface GiftProduct {
+  readonly rewardKey: GiftKey;
+  readonly productId: string;
+  /** Customer facing product name. */
+  readonly title: string;
+  /** Options fixed on every variant; never shown as a choice. Matched case-insensitively. */
+  readonly fixedOptions: Readonly<Record<string, string>>;
+  /** The one option the customer chooses, or null when there is nothing to choose. */
+  readonly customerOption: string | null;
+  /** The option the app picks by stock (the colour). */
+  readonly pickedOption: string;
+  /** Copy shown with the gift. Must state anything the customer does not get to choose. */
+  readonly note: string;
+}
+
+/**
+ * Gift products. All product and variant identity lives here and nowhere
+ * else, because the socks product is provisional and may change.
+ */
+export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
+  gift_gloves: {
+    rewardKey: "gift_gloves",
+    productId: "gid://shopify/Product/8056074502334",
+    title: "GFJ Classic Glove (Unisex)",
+    // 24 variants: Hand x Color x Size. Hand is LH on every variant.
+    fixedOptions: { Hand: "LH" },
+    customerOption: "Size",
+    pickedOption: "Color",
+    note: "Left hand (LH). Colour is randomly selected.",
+  },
+  gift_socks: {
+    rewardKey: "gift_socks",
+    // PROVISIONAL: the socks product may change before launch.
+    productId: "gid://shopify/Product/7884953583806",
+    title: "GFJ Jacquard Ankle High Socks",
+    fixedOptions: {},
+    customerOption: null,
+    pickedOption: "Colour",
+    note: "Colour is randomly selected.",
+  },
+  gift_brush: {
+    rewardKey: "gift_brush",
+    productId: "gid://shopify/Product/8495558852798",
+    title: "GFJ x GreenTee Golf Club Cleaning Brush",
+    fixedOptions: {},
+    customerOption: null,
+    pickedOption: "Colour",
+    note: "Colour is randomly selected.",
+  },
+};
+
+/** The 100% line discount applied to the gift line so the customer pays nothing. */
+export const GIFT_LINE_DISCOUNT = {
+  percentValue: 100,
+  description: "Spin to Win gift",
+} as const;
+
+export function giftProductFor(rewardKey: RewardKey): GiftProduct | null {
+  return rewardKey in GIFT_CATALOG ? GIFT_CATALOG[rewardKey as GiftKey] : null;
+}

@@ -8,6 +8,8 @@ export interface SpinResultProps {
   readonly testMode: boolean;
   /** Thank you page celebrates the win; order status page just presents the reward. */
   readonly surface: "thank-you" | "order-status";
+  /** Thank you page only: where to finish a pending gift. Never rendered on the order status page. */
+  readonly spinUrl?: string | null;
 }
 
 /**
@@ -15,7 +17,7 @@ export interface SpinResultProps {
  * about what a customer won. No email language anywhere: the code lives on
  * screen and on this order's status page only.
  */
-export function SpinResult({ result, testMode, surface }: SpinResultProps) {
+export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultProps) {
   const expiry = formatExpiry(result.expiresAt);
   const heading =
     surface === "thank-you"
@@ -23,11 +25,55 @@ export function SpinResult({ result, testMode, surface }: SpinResultProps) {
       : `Your Spin to Win reward: ${result.rewardLabel}`;
 
   if (result.rewardType === "gift") {
+    const status = result.gift?.status ?? "pending";
+    if (status === "added") {
+      const what = result.gift?.variantTitle
+        ? `${result.rewardLabel} (${result.gift.variantTitle})`
+        : result.rewardLabel;
+      return (
+        <s-banner tone="success" heading={heading}>
+          <s-stack direction="block" gap="small">
+            <s-paragraph>
+              Added to this order at no charge: {what}. It ships with the rest of your items.
+            </s-paragraph>
+            {testMode ? <TestBadge /> : null}
+          </s-stack>
+        </s-banner>
+      );
+    }
+    if (status === "unavailable") {
+      return (
+        <s-banner tone="warning" heading={heading}>
+          <s-stack direction="block" gap="small">
+            <s-paragraph>
+              That gift was out of stock when you tried to add it. Contact us and we'll sort it out.
+            </s-paragraph>
+            {testMode ? <TestBadge /> : null}
+          </s-stack>
+        </s-banner>
+      );
+    }
+    // Pending. Only the Thank you page may send the customer to the spin page.
+    if (surface === "thank-you" && spinUrl) {
+      return (
+        <s-banner tone="success" heading={heading}>
+          <s-stack direction="block" gap="base">
+            <s-paragraph>
+              Your gift is waiting. Confirm it and we'll add it to this order at no charge.
+            </s-paragraph>
+            <s-button variant="primary" href={spinUrl}>
+              Add my gift
+            </s-button>
+            {testMode ? <TestBadge /> : null}
+          </s-stack>
+        </s-banner>
+      );
+    }
     return (
-      <s-banner tone="success" heading={heading}>
+      <s-banner tone="info" heading={heading}>
         <s-stack direction="block" gap="small">
           <s-paragraph>
-            We've added it to this order at no charge. It ships with the rest of your items.
+            Your gift hasn't been added to this order yet. Contact us and we'll sort it out.
           </s-paragraph>
           {testMode ? <TestBadge /> : null}
         </s-stack>

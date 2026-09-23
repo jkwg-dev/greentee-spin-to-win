@@ -3,21 +3,34 @@
  *
  * Deviations from the example in CLAUDE.md, per later decisions:
  * - No `notified` field: the code is delivered on screen and nowhere else.
- * - Gifts carry a `gift` object describing the issued line, not a claim
- *   reference. `code` is null for gifts.
+ * - Gifts carry a `gift` object tracking the Order Editing flow (pending,
+ *   added, unavailable), not a claim reference. `code` is null for gifts.
  * - `testMode` and `forced` are recorded for test users.
  */
 import { SPIN_RESULT_VERSION, type RewardKey } from "~/config/campaign";
 
-export interface GiftIssuance {
-  /** The product variant added to the order at no charge. */
-  readonly variantId: string;
-  /** Line item created by the order edit, once known. */
+export type GiftStatus = "pending" | "added" | "unavailable";
+
+/**
+ * Gift progress on the order.
+ * - pending: won, recorded, order tagged gift-pending; the customer has not confirmed yet.
+ * - added: the variant is on the order at 100% off; order tagged gift-added.
+ * - unavailable: nothing in stock when the customer confirmed; tag stays gift-pending
+ *   and staff handle it manually. `reason` says why.
+ */
+export interface GiftRecord {
+  readonly status: GiftStatus;
+  readonly productId: string;
+  readonly variantId: string | null;
+  readonly variantTitle: string | null;
   readonly lineItemId: string | null;
-  /** The committed OrderEdit, for audit. */
   readonly orderEditId: string | null;
-  /** Stable handle for idempotent re-issue checks (derived, not random). */
+  /** Derived, stable per order. Recorded in the staff note of the order edit. */
   readonly reference: string;
+  /** What the customer chose, e.g. { "Size": "22" }. */
+  readonly selection: Readonly<Record<string, string>> | null;
+  readonly reason: string | null;
+  readonly updatedAt: string;
 }
 
 export interface SpinResultRecord {
@@ -30,7 +43,7 @@ export interface SpinResultRecord {
   /** Discount code for discount rewards; null for gifts. */
   readonly code: string | null;
   readonly discountNodeId: string | null;
-  readonly gift: GiftIssuance | null;
+  readonly gift: GiftRecord | null;
   /** Campaign end, when discount codes stop working. */
   readonly expiresAt: string;
   readonly email: string | null;
@@ -84,11 +97,36 @@ export function parseSpinResult(raw: string | null | undefined): SpinResultRecor
     rewardType: r.rewardType as "discount" | "gift",
     code: typeof r.code === "string" ? r.code : null,
     discountNodeId: typeof r.discountNodeId === "string" ? r.discountNodeId : null,
-    gift: r.gift && typeof r.gift === "object" ? (r.gift as GiftIssuance) : null,
+    gift: parseGift(r.gift),
     expiresAt: r.expiresAt as string,
     email: typeof r.email === "string" ? r.email : null,
     testMode: r.testMode === true,
     forced: r.forced === true,
+  };
+}
+
+function parseGift(raw: unknown): GiftRecord | null {
+  if (!raw || typeof raw !== "object") return null;
+  const g = raw as Record<string, unknown>;
+  const status = g.status;
+  if (status !== "pending" && status !== "added" && status !== "unavailable") {
+    throw new SpinResultParseError("gift status invalid");
+  }
+  const str = (v: unknown) => (typeof v === "string" ? v : null);
+  return {
+    status,
+    productId: str(g.productId) ?? "",
+    variantId: str(g.variantId),
+    variantTitle: str(g.variantTitle),
+    lineItemId: str(g.lineItemId),
+    orderEditId: str(g.orderEditId),
+    reference: str(g.reference) ?? "",
+    selection:
+      g.selection && typeof g.selection === "object"
+        ? (g.selection as Record<string, string>)
+        : null,
+    reason: str(g.reason),
+    updatedAt: str(g.updatedAt) ?? "",
   };
 }
 
@@ -99,7 +137,11 @@ export interface PublicSpinResult {
   readonly rewardLabel: string;
   readonly rewardType: "discount" | "gift";
   readonly code: string | null;
-  readonly gift: { readonly variantId: string; readonly reference: string } | null;
+  readonly gift: {
+    readonly status: GiftStatus;
+    readonly variantTitle: string | null;
+    readonly selection: Readonly<Record<string, string>> | null;
+  } | null;
   readonly spunAt: string;
   readonly expiresAt: string;
   readonly expired: boolean;
@@ -114,7 +156,11 @@ export function toPublicResult(record: SpinResultRecord, now: Date): PublicSpinR
     rewardType: record.rewardType,
     code: record.code,
     gift: record.gift
-      ? { variantId: record.gift.variantId, reference: record.gift.reference }
+      ? {
+          status: record.gift.status,
+          variantTitle: record.gift.variantTitle,
+          selection: record.gift.selection,
+        }
       : null,
     spunAt: record.spunAt,
     expiresAt: record.expiresAt,

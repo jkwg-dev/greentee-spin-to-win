@@ -7,6 +7,7 @@ import {
   SLICES,
   SPIN_RESULT_VERSION,
   SPIN_TOKEN_TTL_SECONDS,
+  giftProductFor,
   type CampaignMode,
   type Slice,
 } from "~/config/campaign";
@@ -19,7 +20,16 @@ import {
   type IneligibleReason,
   type OrderSnapshot,
 } from "~/lib/eligibility";
-import { unimplementedGiftIssuer, type GiftIssuer } from "~/lib/gifts.server";
+import {
+  addGiftToOrder,
+  buildOffer,
+  findGiftLine,
+  loadGiftProduct,
+  pickVariant,
+  tagGiftAdded,
+  tagGiftPending,
+  type GiftOffer,
+} from "~/lib/gifts.server";
 import { log } from "~/lib/log.server";
 import { resolveCampaignMode, writeSpinResult } from "~/lib/metafields.server";
 import {
@@ -34,14 +44,18 @@ import {
   normalizeOrderId,
   resolveForcedSlice,
 } from "~/lib/outcome";
-import { toPublicResult, type PublicSpinResult, type SpinResultRecord } from "~/lib/spin-result";
+import {
+  toPublicResult,
+  type GiftRecord,
+  type PublicSpinResult,
+  type SpinResultRecord,
+} from "~/lib/spin-result";
 import { createSpinToken } from "~/lib/spin-token.server";
 
 export interface SpinDeps {
   readonly admin: AdminClient;
   readonly env: AppEnv;
   readonly now?: () => Date;
-  readonly giftIssuer?: GiftIssuer;
   readonly fetchOrderOpts?: FetchOrderOptions;
 }
 
@@ -101,6 +115,8 @@ export type SpinStatus =
       readonly eligible: true;
       readonly testMode: boolean;
       readonly result: PublicSpinResult;
+      /** Thank you page only: present while a won gift still needs confirming. */
+      readonly spinUrl?: string;
     }
   | {
       readonly campaignOpen: true;
@@ -125,6 +141,8 @@ export type SpinState = SpinStatus & {
   readonly wheel?: readonly WheelSlice[];
   /** Where the spin page's "Back to your order" button goes. */
   readonly orderUrl?: string | null;
+  /** Present while a won gift is pending or unavailable, so the page can render the gift step. */
+  readonly giftOffer?: GiftOffer | null;
 };
 
 export type SpinExecution =
@@ -134,7 +152,36 @@ export type SpinExecution =
       readonly alreadySpun: boolean;
       readonly forced: boolean;
       readonly result: PublicSpinResult;
+      readonly giftOffer?: GiftOffer | null;
     };
+
+export type GiftConfirmation = {
+  readonly campaignOpen: true;
+  readonly result: PublicSpinResult;
+  readonly giftOffer: GiftOffer | null;
+  /** Customer facing line when the gift could not be added. */
+  readonly message?: string;
+};
+
+export const GIFT_MESSAGES = {
+  unavailable:
+    "We're sorry, that gift is out of stock right now. Please contact us and we'll sort it out.",
+} as const;
+
+/** Loads the live offer for a stored gift, or null when the gift is already added or on failure. */
+async function offerFor(order: OrderSnapshot, deps: SpinDeps): Promise<GiftOffer | null> {
+  const r = order.spinResult;
+  if (!r || r.rewardType !== "gift" || !r.gift || r.gift.status === "added") return null;
+  const product = giftProductFor(r.rewardKey);
+  if (!product) return null;
+  try {
+    const gp = await loadGiftProduct(deps.admin, product, order.id);
+    return buildOffer(product, gp.variants, gp.imageUrl);
+  } catch (error) {
+    log.warn("gift.offer.unavailable", { orderId: order.id, error });
+    return null;
+  }
+}
 
 function buildStatus(
   order: OrderSnapshot,
@@ -148,6 +195,9 @@ function buildStatus(
 
   // A stored result always wins, even after the campaign closes.
   if (order.spinResult) {
+    // A gift that has not been added yet can still be finished on the spin
+    // page, so the Thank you page keeps its link while the campaign is open.
+    const giftOpen = order.spinResult.gift?.status !== "added" && now < deps.env.campaignEnd;
     return {
       campaignOpen: true,
       pending: false,
@@ -155,6 +205,9 @@ function buildStatus(
       eligible: true,
       testMode: order.spinResult.testMode,
       result: toPublicResult(order.spinResult, now),
+      ...(withSpinUrl && order.spinResult.rewardType === "gift" && giftOpen
+        ? { spinUrl: spinUrlFor(order, deps, now) }
+        : {}),
     };
   }
   if (!elig.eligible) {
@@ -174,14 +227,13 @@ function buildStatus(
     alreadySpun: false,
     eligible: true,
     testMode: elig.isTestUser,
-    ...(withSpinUrl
-      ? {
-          spinUrl: `${deps.env.spinPageUrl}?token=${encodeURIComponent(
-            createSpinToken(deps.env.spinSecret, order.id, SPIN_TOKEN_TTL_SECONDS, now),
-          )}`,
-        }
-      : {}),
+    ...(withSpinUrl ? { spinUrl: spinUrlFor(order, deps, now) } : {}),
   };
+}
+
+function spinUrlFor(order: OrderSnapshot, deps: SpinDeps, now: Date): string {
+  const token = createSpinToken(deps.env.spinSecret, order.id, SPIN_TOKEN_TTL_SECONDS, now);
+  return `${deps.env.spinPageUrl}?token=${encodeURIComponent(token)}`;
 }
 
 /** Thank you page: eligibility plus a signed link to the spin page. */
@@ -205,7 +257,9 @@ export async function getSpinState(orderId: string | number, deps: SpinDeps): Pr
   if (!order) return { campaignOpen: true, pending: true };
   const status = buildStatus(order, mode, deps, false);
   log.info("spin.state", { orderId: id, mode, ...summarize(status) });
-  return status.campaignOpen ? { ...status, wheel: WHEEL, orderUrl: order.statusPageUrl } : status;
+  if (!status.campaignOpen) return status;
+  const giftOffer = await offerFor(order, deps);
+  return { ...status, wheel: WHEEL, orderUrl: order.statusPageUrl, giftOffer };
 }
 
 export interface ExecuteOptions {
@@ -288,7 +342,7 @@ export async function executeSpin(
 
   let code: string | null = null;
   let discountNodeId: string | null = null;
-  let gift: SpinResultRecord["gift"] = null;
+  let gift: GiftRecord | null = null;
 
   if (slice.rewardType === "discount" && slice.discount) {
     const title = `${tester ? DISCOUNT_TITLE.testPrefix : DISCOUNT_TITLE.prefix} ${slice.label} ${order.name}`;
@@ -317,24 +371,23 @@ export async function executeSpin(
       );
     }
   } else if (slice.rewardType === "gift") {
-    try {
-      gift = await (deps.giftIssuer ?? unimplementedGiftIssuer).issue({
-        admin: deps.admin,
-        orderId: id,
-        orderGid: order.gid,
-        slice,
-        giftReference: derived.giftReference,
-        testMode: tester,
-      });
-    } catch (error) {
-      l.error("spin.execute.gift_failed", { error, sliceIndex: slice.index });
-      throw new SpinError(
-        503,
-        "gift_unavailable",
-        "We could not add your gift. Please try again.",
-        { retryable: true },
-      );
-    }
+    // Nothing is added yet. The record and the gift-pending tag are written
+    // first so staff can find anyone who closes the page before confirming.
+    const product = giftProductFor(slice.rewardKey);
+    if (!product)
+      throw new SpinError(500, "gift_not_configured", `No gift product for ${slice.rewardKey}`);
+    gift = {
+      status: "pending",
+      productId: product.productId,
+      variantId: null,
+      variantTitle: null,
+      lineItemId: null,
+      orderEditId: null,
+      reference: derived.giftReference,
+      selection: null,
+      reason: null,
+      updatedAt: now.toISOString(),
+    };
   } else {
     // Only slice 10 has no reward and it is unreachable; treat as a bug.
     throw new SpinError(500, "invalid_slice", `Slice ${slice.index} awards nothing`);
@@ -368,6 +421,15 @@ export async function executeSpin(
   }
   invalidateOrderCache(id);
 
+  if (gift) {
+    try {
+      await tagGiftPending(deps.admin, order.gid, id);
+    } catch (error) {
+      // The record already says pending; the tag is for staff convenience.
+      l.error("spin.execute.gift_tag_failed", { error });
+    }
+  }
+
   l.info("spin.execute.done", {
     sliceIndex: slice.index,
     rewardKey: slice.rewardKey,
@@ -377,12 +439,139 @@ export async function executeSpin(
     forced: forcing,
     roll: derived.roll,
   });
+  const giftOffer = gift ? await offerFor({ ...order, spinResult: record }, deps) : null;
   return {
     campaignOpen: true,
     alreadySpun: false,
     forced: forcing,
     result: toPublicResult(record, now),
+    ...(gift ? { giftOffer } : {}),
   };
+}
+
+export interface ConfirmGiftOptions {
+  /** e.g. { Size: "22" }. Ignored for gifts with nothing to choose. */
+  readonly selection?: Readonly<Record<string, string>> | null;
+}
+
+/**
+ * Adds the won gift to the order. Idempotent: an added gift returns as is; a
+ * gift line already on the order (crash after commit) is adopted; anything
+ * out of stock leaves the order untouched and the tag at gift-pending.
+ */
+export async function confirmGift(
+  orderId: string | number,
+  opts: ConfirmGiftOptions,
+  deps: SpinDeps,
+): Promise<GiftConfirmation> {
+  const id = normalizeOrderId(orderId);
+  const now = (deps.now ?? (() => new Date()))();
+  const l = log.child({ orderId: id });
+
+  const mode = await resolveCampaignMode(deps.admin, deps.env);
+  if (mode === "off")
+    throw new SpinError(409, "campaign_closed", "Spin to Win is closed right now.");
+
+  const order = await fetchOrder(deps.admin, id, deps.fetchOrderOpts);
+  if (!order)
+    throw new SpinError(503, "order_pending", "Order is not available yet", { retryable: true });
+  const record = order.spinResult;
+  if (!record) throw new SpinError(409, "not_spun", "This order has not spun yet.");
+  if (record.rewardType !== "gift" || !record.gift)
+    throw new SpinError(409, "not_a_gift", "This order did not win a gift.");
+  if (mode === "test" && !isTestUser(order, deps.env))
+    throw new SpinError(409, "campaign_closed", "Spin to Win is closed right now.");
+  const product = giftProductFor(record.rewardKey);
+  if (!product)
+    throw new SpinError(500, "gift_not_configured", `No gift product for ${record.rewardKey}`);
+
+  if (record.gift.status === "added") {
+    l.info("gift.confirm.already_added", { variantId: record.gift.variantId });
+    return { campaignOpen: true, result: toPublicResult(record, now), giftOffer: null };
+  }
+
+  const persist = async (gift: GiftRecord): Promise<SpinResultRecord> => {
+    const next: SpinResultRecord = { ...record, gift };
+    await writeSpinResult(deps.admin, id, order.gid, next);
+    invalidateOrderCache(id);
+    return next;
+  };
+
+  // Crash between commit and the metafield write: adopt the existing line rather than add another.
+  const existing = await findGiftLine(deps.admin, order.gid, id, product.productId);
+  if (existing) {
+    l.info("gift.confirm.adopted_existing_line", { ...existing });
+    const next = await persist({
+      ...record.gift,
+      status: "added",
+      variantId: existing.variantId,
+      lineItemId: existing.lineItemId,
+      reason: null,
+      updatedAt: now.toISOString(),
+    });
+    await tagGiftAdded(deps.admin, order.gid, id);
+    return { campaignOpen: true, result: toPublicResult(next, now), giftOffer: null };
+  }
+
+  const { variants, imageUrl } = await loadGiftProduct(deps.admin, product, id);
+  const selection = product.customerOption ? (opts.selection ?? null) : null;
+  const pick = pickVariant(product, variants, selection);
+  if (!pick.ok) {
+    if (pick.reason === "selection_required" || pick.reason === "invalid_selection") {
+      throw new SpinError(400, pick.reason, `Please choose a ${product.customerOption}.`);
+    }
+    // Out of stock: do not edit the order, keep gift-pending, record why.
+    l.warn("gift.confirm.unavailable", { selection, reason: pick.reason });
+    const next = await persist({
+      ...record.gift,
+      status: "unavailable",
+      selection,
+      reason: `no_stock${selection ? ` for ${JSON.stringify(selection)}` : ""} at ${now.toISOString()}`,
+      updatedAt: now.toISOString(),
+    });
+    return {
+      campaignOpen: true,
+      result: toPublicResult(next, now),
+      giftOffer: buildOffer(product, variants, imageUrl),
+      message: GIFT_MESSAGES.unavailable,
+    };
+  }
+
+  let added: { orderEditId: string; lineItemId: string | null };
+  try {
+    added = await addGiftToOrder(deps.admin, {
+      orderId: id,
+      orderGid: order.gid,
+      variant: pick.variant,
+      product,
+      reference: record.gift.reference,
+    });
+  } catch (error) {
+    // Nothing committed (or commit failed): record and tag are unchanged, retry is safe.
+    l.error("gift.confirm.edit_failed", { error, variantId: pick.variant.id });
+    throw new SpinError(503, "gift_edit_failed", "We could not add your gift. Please try again.", {
+      retryable: true,
+    });
+  }
+
+  const next = await persist({
+    ...record.gift,
+    status: "added",
+    variantId: pick.variant.id,
+    variantTitle: pick.variant.title,
+    lineItemId: added.lineItemId,
+    orderEditId: added.orderEditId,
+    selection,
+    reason: null,
+    updatedAt: now.toISOString(),
+  });
+  await tagGiftAdded(deps.admin, order.gid, id);
+  l.info("gift.confirm.done", {
+    variantId: pick.variant.id,
+    lineItemId: added.lineItemId,
+    selection,
+  });
+  return { campaignOpen: true, result: toPublicResult(next, now), giftOffer: null };
 }
 
 function summarize(status: SpinStatus): Record<string, unknown> {

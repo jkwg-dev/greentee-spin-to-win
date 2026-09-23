@@ -72,11 +72,7 @@ describe("parseStatus", () => {
         testMode: false,
         result,
       }),
-    ).toEqual({
-      kind: "spun",
-      testMode: false,
-      result,
-    });
+    ).toEqual({ kind: "spun", testMode: false, spinUrl: null, result });
   });
 
   it("treats junk as a retryable error", () => {

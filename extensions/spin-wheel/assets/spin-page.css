@@ -1,11 +1,11 @@
-/* GreenTee Spin to Win. Mobile first; reads as a modal with its own URL. */
+/* GreenTee Spin to Win. Minimal, mobile first; reads as a modal with its own URL. */
 .gt-spin {
   --gt-navy: #1b2a3d;
   --gt-cream: #efe9dc;
   --gt-green: #2e5a3e;
   --gt-gold: #c9a961;
-  --gt-bg: #d9d2c3;
-  --gt-stage: min(100vw - 2rem, 440px);
+  --gt-bg: #f6f3ec;
+  --gt-stage: min(100vw - 3rem, 400px);
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
@@ -35,71 +35,52 @@ html.gt-spin-open body {
   overflow: hidden !important;
 }
 
-.gt-spin__scrim {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      120% 90% at 50% 40%,
-      rgba(255, 252, 244, 0.72) 0%,
-      rgba(255, 252, 244, 0.35) 55%,
-      rgba(60, 50, 35, 0.35) 100%
-    ),
-    linear-gradient(rgba(255, 250, 240, 0.25), rgba(255, 250, 240, 0.25));
-}
-
 .gt-spin__panel {
   position: relative;
-  z-index: 1;
-  max-width: 560px;
+  max-width: 520px;
   margin: 0 auto;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom));
+  padding: max(1rem, env(safe-area-inset-top)) 1.25rem calc(2rem + env(safe-area-inset-bottom));
   text-align: center;
 }
 
 .gt-spin__close {
   position: absolute;
-  top: 0.35rem;
-  right: 0.5rem;
-  width: 2.75rem;
-  height: 2.75rem;
+  top: 0.5rem;
+  right: 0.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: var(--gt-navy);
   text-decoration: none;
-  font-size: 2rem;
+  font-size: 1.75rem;
   line-height: 1;
-  background: rgba(255, 255, 255, 0.55);
 }
 
 .gt-spin__header {
-  padding: 0.75rem 2.75rem 0.25rem;
+  padding: 1rem 2.5rem 0.25rem;
 }
 
 .gt-spin__eyebrow {
   margin: 0 0 0.25rem;
   font-size: 0.75rem;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  opacity: 0.85;
+  opacity: 0.7;
 }
 
 .gt-spin__heading {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
   font-weight: 600;
-  font-size: 1.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  line-height: 1.15;
+  font-size: 1.5rem;
+  line-height: 1.2;
 }
 
 .gt-spin__status {
-  margin: 0.5rem auto 0.9rem;
-  max-width: 34ch;
+  margin: 0.5rem auto 0.75rem;
+  max-width: 36ch;
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -113,7 +94,7 @@ html.gt-spin-open body {
   position: relative;
   width: var(--gt-stage);
   height: var(--gt-stage);
-  margin: 1.4rem auto 1.25rem;
+  margin: 1.5rem auto 1.25rem;
 }
 
 .gt-spin__wheel {
@@ -127,31 +108,9 @@ html.gt-spin-open body {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: calc(var(--gt-stage) * 0.028) solid var(--gt-gold);
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 18px rgba(0, 0, 0, 0.25);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.12)) border-box;
+  border: 3px solid var(--gt-gold);
   pointer-events: none;
   z-index: 3;
-}
-
-.gt-spin__rivets {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-}
-
-.gt-spin__rivet {
-  position: absolute;
-  width: calc(var(--gt-stage) * 0.022);
-  height: calc(var(--gt-stage) * 0.022);
-  margin: calc(var(--gt-stage) * -0.011) 0 0 calc(var(--gt-stage) * -0.011);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff3c9, var(--gt-gold) 55%, #7d6224);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .gt-spin__labels {
@@ -164,26 +123,26 @@ html.gt-spin-open body {
 
 .gt-spin__label {
   position: absolute;
-  width: calc(var(--gt-stage) * 0.21);
+  width: calc(var(--gt-stage) * 0.22);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15em;
+  gap: 0.2em;
   font-size: calc(var(--gt-stage) * 0.03);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: center;
   will-change: transform;
 }
 
 .gt-spin__label svg {
-  width: calc(var(--gt-stage) * 0.075);
-  height: calc(var(--gt-stage) * 0.075);
+  width: calc(var(--gt-stage) * 0.07);
+  height: calc(var(--gt-stage) * 0.07);
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -192,57 +151,43 @@ html.gt-spin-open body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(var(--gt-stage) * 0.27);
-  height: calc(var(--gt-stage) * 0.27);
+  width: calc(var(--gt-stage) * 0.16);
+  height: calc(var(--gt-stage) * 0.16);
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 30%, #f5e6b8, var(--gt-gold) 55%, #9a7a32);
-  box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 3px rgba(255, 255, 255, 0.35),
-    inset 0 0 0 5px rgba(90, 70, 25, 0.35);
+  background: var(--gt-cream);
+  border: 3px solid var(--gt-gold);
   z-index: 5;
   pointer-events: none;
 }
 
 .gt-spin__hub-text {
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700;
-  font-size: calc(var(--gt-stage) * 0.05);
+  font-weight: 600;
+  font-size: calc(var(--gt-stage) * 0.03);
   line-height: 1.1;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gt-navy);
-  padding: 0 0.5em;
+  padding: 0 0.4em;
+}
+
+.gt-spin__hub-text:empty {
+  display: none;
 }
 
 .gt-spin__pointer {
   position: absolute;
-  top: calc(var(--gt-stage) * -0.055);
+  top: calc(var(--gt-stage) * -0.03);
   left: 50%;
-  width: calc(var(--gt-stage) * 0.13);
-  height: calc(var(--gt-stage) * 0.16);
+  width: calc(var(--gt-stage) * 0.08);
+  height: calc(var(--gt-stage) * 0.09);
   transform: translateX(-50%);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
-  background: linear-gradient(160deg, #f3e3b3, var(--gt-gold) 45%, #8f7030);
-  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.4));
+  background: var(--gt-navy);
   z-index: 6;
-}
-
-.gt-spin__pointer::after {
-  content: "";
-  position: absolute;
-  top: 24%;
-  left: 50%;
-  width: 22%;
-  height: 18%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: #fff8e6;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 /* -------------------------------------------------------------- actions */
@@ -258,14 +203,12 @@ html.gt-spin-open body {
   border: 2px solid var(--gt-navy);
   border-radius: 999px;
   background: var(--gt-navy);
-  color: var(--gt-cream);
+  color: #fff;
   font: inherit;
   font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0.95rem 2rem;
-  width: min(100%, 22rem);
+  padding: 0.85rem 1.75rem;
+  width: min(100%, 20rem);
   cursor: pointer;
   text-decoration: none;
   text-align: center;
@@ -276,14 +219,9 @@ html.gt-spin-open body {
   cursor: default;
 }
 
-.gt-spin__button--secondary {
-  background: transparent;
-  color: var(--gt-navy);
-}
-
+.gt-spin__button--secondary,
 .gt-spin__button--gold {
-  background: var(--gt-gold);
-  border-color: var(--gt-gold);
+  background: transparent;
   color: var(--gt-navy);
 }
 
@@ -291,12 +229,11 @@ html.gt-spin-open body {
 .gt-spin__result {
   margin: 1rem auto 0;
   padding: 1.25rem 1rem 1.4rem;
-  width: min(100%, 26rem);
-  border: 2px solid var(--gt-gold);
-  border-radius: 14px;
-  background: var(--gt-cream);
+  width: min(100%, 24rem);
+  border: 1px solid rgba(27, 42, 61, 0.2);
+  border-radius: 12px;
+  background: #fff;
   color: var(--gt-navy);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   text-align: center;
 }
 
@@ -306,8 +243,8 @@ html.gt-spin-open body {
 
 .gt-spin__result-heading {
   margin: 0 0 0.5rem;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -315,10 +252,10 @@ html.gt-spin-open body {
   display: inline-block;
   margin: 0.5rem 0;
   padding: 0.55rem 1rem;
-  border: 2px dashed var(--gt-gold);
+  border: 1px dashed var(--gt-navy);
   border-radius: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   letter-spacing: 0.08em;
   user-select: all;
 }
@@ -336,9 +273,80 @@ html.gt-spin-open body {
   line-height: 1.5;
 }
 
+.gt-spin__note--warn {
+  color: #9b2c1f;
+}
+
+.gt-spin__choice-label {
+  margin: 0.9rem 0 0.4rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.gt-spin__choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.gt-spin__chip {
+  appearance: none;
+  min-width: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gt-navy);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gt-navy);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gt-spin__chip--selected {
+  background: var(--gt-navy);
+  color: #fff;
+}
+
+.gt-spin__chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.gt-spin__gift-confirm {
+  margin-top: 0.5rem;
+}
+
 .gt-spin__back {
-  margin-top: 1.1rem;
+  margin-top: 1rem;
   display: inline-block;
+}
+
+.gt-spin__back--quiet {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--gt-navy);
+  opacity: 0.7;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.gt-spin__gift-image {
+  display: block;
+  width: min(60%, 180px);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  margin: 0 auto 0.75rem;
+  border-radius: 10px;
+}
+
+.gt-spin__note--small {
+  font-size: 0.8rem;
+  opacity: 0.75;
 }
 
 .gt-spin__badge {
@@ -346,27 +354,20 @@ html.gt-spin-open body {
   margin-top: 0.75rem;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: rgba(27, 42, 61, 0.1);
+  background: rgba(27, 42, 61, 0.08);
   font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 @media (min-width: 640px) {
   .gt-spin {
-    --gt-stage: 460px;
+    --gt-stage: 420px;
   }
   .gt-spin__heading {
-    font-size: 2.25rem;
+    font-size: 1.75rem;
   }
   .gt-spin__panel {
     padding-top: 2rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gt-spin__labels,
-  .gt-spin__label {
-    will-change: auto;
   }
 }
