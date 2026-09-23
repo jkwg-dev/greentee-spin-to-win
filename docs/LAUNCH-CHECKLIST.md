@@ -30,7 +30,8 @@ write_order_edits, read_products` and both extensions).
 
 ## 3. Test on the live store (campaign mode `test`)
 
-Tag your test customer `test-user` (or add your email to `TEST_EMAILS`). Set
+Tag your test customer `test-user` (or add your email to `TEST_EMAILS`; that route only works
+once protected customer data with the email field is approved, so prefer the tag). Set
 `TEST_BYPASS_MIN_SUBTOTAL=true` while testing cheap orders.
 
 - [ ] Order at $299.99 and at $300.00 with a non-test customer: the first is ineligible, the

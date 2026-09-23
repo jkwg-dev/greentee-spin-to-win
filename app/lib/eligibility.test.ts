@@ -30,7 +30,7 @@ function order(over: Partial<OrderSnapshot> = {}): OrderSnapshot {
     statusPageUrl: "https://greentee.myshopify.com/orders/abc",
     subtotal: { amount: 300, currencyCode: "CAD" },
     tags: [],
-    customer: { id: "gid://shopify/Customer/1", tags: [], emailMarketingState: null },
+    customer: { id: "gid://shopify/Customer/1", tags: [] },
     spinResult: null,
     ...over,
   };
@@ -38,15 +38,8 @@ function order(over: Partial<OrderSnapshot> = {}): OrderSnapshot {
 
 describe("isTestUser", () => {
   it("matches the customer tag case-insensitively with whitespace", () => {
-    expect(
-      isTestUser(
-        order({ customer: { id: "c", tags: [" Test-USER "], emailMarketingState: null } }),
-        env,
-      ),
-    ).toBe(true);
-    expect(
-      isTestUser(order({ customer: { id: "c", tags: ["vip"], emailMarketingState: null } }), env),
-    ).toBe(false);
+    expect(isTestUser(order({ customer: { id: "c", tags: [" Test-USER "] } }), env)).toBe(true);
+    expect(isTestUser(order({ customer: { id: "c", tags: ["vip"] } }), env)).toBe(false);
   });
 
   it("matches the order tag, covering guest checkouts", () => {

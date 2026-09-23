@@ -22,7 +22,6 @@ export interface OrderSnapshot {
   readonly customer: {
     readonly id: string;
     readonly tags: readonly string[];
-    readonly emailMarketingState: string | null;
   } | null;
   readonly spinResult: SpinResultRecord | null;
 }

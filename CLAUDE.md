@@ -7,7 +7,7 @@ Context for the GreenTee Spin to Win app. Read this before writing code.
 GreenTee Golf Shop runs a Wheel of Fortune promotion from October 1 to November 2, 2026.
 A customer who places a qualifying online order is invited, on the Thank you page, to spin a
 wheel once. The wheel awards either a discount code for a future purchase or a complimentary
-GFJ gift (claimed manually).
+GFJ gift added to the same order at no charge (see Gift rewards).
 
 This is a standalone custom Shopify app built only for this campaign. It is deliberately
 separate from GreenTee's other apps so it can be removed cleanly when the campaign ends.
@@ -224,7 +224,9 @@ both see an empty metafield. The fix is determinism plus a natural unique key.
 
 1. **The outcome is derived, not rolled.** Compute
    `hmacSha256(SPIN_SECRET, String(orderId))`, take the first 8 hex characters as an integer,
-   divide by 0xFFFFFFFF to get a value in `[0, 1)`, and map it onto the cumulative slice table.
+   divide by 2^32 (0x100000000, so the range is the half-open `[0, 1)`; dividing by 0xFFFFFFFF
+   would allow exactly 1.0), and map it onto the cumulative slice table. The order ID is
+   normalised to its numeric form first so a GID and a bare ID derive the same outcome.
    The same order always produces the same slice. Two racing requests cannot disagree.
 2. **The code is derived too.** Derive the code suffix from the same HMAC, so both requests would
    try to create the identical code. Shopify rejects a duplicate code, so at most one discount is

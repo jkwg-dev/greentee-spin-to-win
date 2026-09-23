@@ -27,9 +27,6 @@ export const ORDER_QUERY = /* GraphQL */ `
       customer {
         id
         tags
-        emailMarketingConsent {
-          marketingState
-        }
       }
       metafield(namespace: $namespace, key: $key) {
         id
@@ -51,7 +48,6 @@ interface OrderQueryData {
     customer: {
       id: string;
       tags: string[];
-      emailMarketingConsent: { marketingState: string } | null;
     } | null;
     metafield: { id: string; value: string } | null;
   } | null;
@@ -74,7 +70,6 @@ export function toSnapshot(o: NonNullable<OrderQueryData["order"]>): OrderSnapsh
       ? {
           id: o.customer.id,
           tags: o.customer.tags,
-          emailMarketingState: o.customer.emailMarketingConsent?.marketingState ?? null,
         }
       : null,
     spinResult: parseSpinResult(o.metafield?.value),

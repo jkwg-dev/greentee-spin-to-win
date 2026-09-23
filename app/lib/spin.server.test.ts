@@ -47,7 +47,6 @@ interface RawOrder {
   customer: {
     id: string;
     tags: string[];
-    emailMarketingConsent: { marketingState: string } | null;
   } | null;
   metafield: { id: string; value: string } | null;
 }
@@ -103,7 +102,7 @@ function rawOrder(id: string, over: Partial<RawOrder> = {}): RawOrder {
     tags: [],
     statusPageUrl: `https://greentee.myshopify.com/orders/tok${id}`,
     currentSubtotalPriceSet: { shopMoney: { amount: "300.00", currencyCode: "CAD" } },
-    customer: { id: "gid://shopify/Customer/1", tags: [], emailMarketingConsent: null },
+    customer: { id: "gid://shopify/Customer/1", tags: [] },
     metafield: null,
     ...over,
   };

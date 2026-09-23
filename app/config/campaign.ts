@@ -43,7 +43,7 @@ export interface DiscountReward {
 }
 
 export interface GiftReward {
-  /** Human readable gift name used in claim instructions. */
+  /** Human readable gift name shown to the customer. */
   readonly name: string;
 }
 
@@ -215,7 +215,7 @@ export function assertRewardTable(slices: readonly Slice[] = SLICES): void {
 // Startup assertion. Importing this module anywhere fails fast on a bad table.
 assertRewardTable(SLICES);
 
-/** Discount / claim reference formats. */
+/** Discount code and gift reference formats. The gift reference is an internal idempotency handle. */
 export const CODE_FORMAT = {
   /** 32 characters, so `byte % 32` is a uniform pick with no modulo bias. */
   alphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
