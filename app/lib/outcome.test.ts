@@ -40,6 +40,14 @@ describe("reward table", () => {
     expect(() => assertRewardTable()).not.toThrow();
   });
 
+  it("gives every slice a short wheel label and an icon", () => {
+    for (const s of SLICES) {
+      expect(s.wheelLabel.length).toBeGreaterThan(0);
+      expect(s.wheelLabel.length).toBeLessThanOrEqual(20);
+      expect(s.icon).toBeTruthy();
+    }
+  });
+
   it("has slice 10 as try_again with 0%", () => {
     const s = SLICES[TRY_AGAIN_SLICE_INDEX - 1];
     expect(s.rewardKey).toBe("try_again");

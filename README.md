@@ -20,7 +20,9 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `extensions/spin-status/` — checkout UI extension (Preact + Polaris web components, API 2026-07).
   `src/ThankYou.tsx` is the full flow on `purchase.thank-you.block.render`;
   `src/OrderStatus.tsx` is display only on `customer-account.order-status.block.render`.
-- Theme app extension holding the wheel: step 4.
+- `extensions/spin-wheel/` — theme app extension: the wheel as a full-screen overlay block.
+  `blocks/spin-wheel.liquid` (markup + settings), `assets/spin-page.js` (states, spin, result),
+  `assets/spin-page.css`, and `assets/spin-wheel.js` (vendored `spin-wheel@5.0.2`, MIT, pinned).
 
 ## Setup
 
@@ -79,6 +81,22 @@ linking to the signed spin URL), already spun (code or gift with expiry and a co
 While the order is still being created it shows a "just a moment" banner and polls for about
 20 seconds. The Order status page renders the stored reward or nothing at all. A spin can only
 start from the Thank you page.
+
+## Spin page (theme app extension)
+
+Add the "Spin to Win wheel" app block to the storefront page that `SPIN_PAGE_URL` points at.
+By default the block renders as a fixed full-screen overlay covering the theme header and
+navigation, so the page reads as a modal with its own URL. A background image, colours and copy
+are block settings.
+
+The page needs `?token=` from the Thank you page. It calls `/apps/spin/state` (invalid, expired
+or missing token: a plain message and nothing else; stored result: shown without spinning) and
+`/apps/spin/execute` on Spin. The server picks the slice; the page animates to that index with
+`spinToItem` and never derives its own outcome. Slices are drawn in reward-table order with a
+navy / cream / green palette by position; labels and icons live in an HTML layer that rotates
+with the wheel while each label counter-rotates to stay upright. A failed execute stops the
+wheel and shows Try again, which is safe because the server is idempotent. Reduced motion
+shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlice` for testers.
 
 ## Gifts
 

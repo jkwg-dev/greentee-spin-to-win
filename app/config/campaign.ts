@@ -47,10 +47,16 @@ export interface GiftReward {
   readonly name: string;
 }
 
+export type WheelIcon = "club" | "glove" | "brush" | "sock" | "shirt" | "bag" | "trophy";
+
 export interface Slice {
   /** 1-based slice number as shown on the wheel. */
   readonly index: number;
+  /** Full reward name: result cards, discount titles, the metafield. */
   readonly label: string;
+  /** Short label printed on the wheel face (uppercase, two lines at most). */
+  readonly wheelLabel: string;
+  readonly icon: WheelIcon;
   readonly rewardKey: RewardKey;
   readonly rewardType: RewardType;
   /** Integer percentage. All slices must sum to exactly 100. */
@@ -70,6 +76,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 1,
     label: "10% Off Eligible Clubs",
+    wheelLabel: "10% Off Clubs",
+    icon: "club",
     rewardKey: "clubs_10",
     rewardType: "discount",
     probability: 25,
@@ -78,6 +86,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 2,
     label: "GFJ Gloves",
+    wheelLabel: "GFJ Gloves",
+    icon: "glove",
     rewardKey: "gift_gloves",
     rewardType: "gift",
     probability: 4,
@@ -86,6 +96,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 3,
     label: "15% Off Eligible Accessories",
+    wheelLabel: "15% Off Accessories",
+    icon: "bag",
     rewardKey: "accessories_15",
     rewardType: "discount",
     probability: 25,
@@ -94,6 +106,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 4,
     label: "GFJ Club Brush",
+    wheelLabel: "GFJ Club Brush",
+    icon: "brush",
     rewardKey: "gift_brush",
     rewardType: "gift",
     probability: 4,
@@ -102,6 +116,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 5,
     label: "GFJ Socks",
+    wheelLabel: "GFJ Socks",
+    icon: "sock",
     rewardKey: "gift_socks",
     rewardType: "gift",
     probability: 4,
@@ -110,6 +126,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 6,
     label: "30% Off Eligible Apparel",
+    wheelLabel: "30% Off Apparel",
+    icon: "shirt",
     rewardKey: "apparel_30",
     rewardType: "discount",
     probability: 25,
@@ -118,6 +136,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 7,
     label: "GFJ Gloves",
+    wheelLabel: "GFJ Gloves",
+    icon: "glove",
     rewardKey: "gift_gloves",
     rewardType: "gift",
     probability: 4,
@@ -126,6 +146,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 8,
     label: "GFJ Club Brush",
+    wheelLabel: "GFJ Club Brush",
+    icon: "brush",
     rewardKey: "gift_brush",
     rewardType: "gift",
     probability: 4,
@@ -134,6 +156,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: 9,
     label: "GFJ Socks",
+    wheelLabel: "GFJ Socks",
+    icon: "sock",
     rewardKey: "gift_socks",
     rewardType: "gift",
     probability: 5,
@@ -142,6 +166,8 @@ export const SLICES: readonly Slice[] = [
   {
     index: TRY_AGAIN_SLICE_INDEX,
     label: "Try Again",
+    wheelLabel: "Try Again",
+    icon: "trophy",
     rewardKey: "try_again",
     rewardType: "none",
     probability: 0,

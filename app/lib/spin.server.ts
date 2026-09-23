@@ -77,10 +77,19 @@ export const INELIGIBLE_MESSAGES: Record<IneligibleReason, string> = {
 
 export interface WheelSlice {
   readonly index: number;
+  /** Short label for the wheel face. */
   readonly label: string;
+  readonly icon: Slice["icon"];
+  readonly rewardType: Slice["rewardType"];
 }
 
-export const WHEEL: readonly WheelSlice[] = SLICES.map((s) => ({ index: s.index, label: s.label }));
+/** What the storefront wheel draws. It never sees probabilities. */
+export const WHEEL: readonly WheelSlice[] = SLICES.map((s) => ({
+  index: s.index,
+  label: s.wheelLabel,
+  icon: s.icon,
+  rewardType: s.rewardType,
+}));
 
 export type SpinStatus =
   | { readonly campaignOpen: false }
@@ -112,7 +121,11 @@ export type SpinStatus =
       readonly message: string;
     };
 
-export type SpinState = SpinStatus & { readonly wheel?: readonly WheelSlice[] };
+export type SpinState = SpinStatus & {
+  readonly wheel?: readonly WheelSlice[];
+  /** Where the spin page's "Back to your order" button goes. */
+  readonly orderUrl?: string | null;
+};
 
 export type SpinExecution =
   | { readonly campaignOpen: false }
@@ -192,7 +205,7 @@ export async function getSpinState(orderId: string | number, deps: SpinDeps): Pr
   if (!order) return { campaignOpen: true, pending: true };
   const status = buildStatus(order, mode, deps, false);
   log.info("spin.state", { orderId: id, mode, ...summarize(status) });
-  return status.campaignOpen ? { ...status, wheel: WHEEL } : status;
+  return status.campaignOpen ? { ...status, wheel: WHEEL, orderUrl: order.statusPageUrl } : status;
 }
 
 export interface ExecuteOptions {

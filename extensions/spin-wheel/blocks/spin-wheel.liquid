@@ -1,0 +1,180 @@
+{%- comment -%}
+  GreenTee Spin to Win: the wheel, rendered as a full-screen overlay so the page feels like a
+  modal that happens to have its own URL. Place this app block on the storefront page that the
+  Thank you page links to (SPIN_PAGE_URL). It needs ?token=... in the URL; without a valid token
+  it shows a plain message and nothing else. The server decides every outcome; this block only
+  animates to the slice it is told.
+{%- endcomment -%}
+
+{%- liquid
+  assign bg_image = ''
+  if block.settings.background_image != blank
+    assign bg_image = block.settings.background_image | image_url: width: 2000
+  endif
+-%}
+
+<div
+  class="gt-spin{% if block.settings.overlay %} gt-spin--overlay{% endif %}"
+  data-gt-spin
+  data-overlay="{{ block.settings.overlay }}"
+  data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
+  data-intro="{{ block.settings.intro | escape }}"
+  data-back-label="{{ block.settings.back_label | default: 'Back to your order' | escape }}"
+  style="
+    --gt-navy: {{ block.settings.color_navy | default: '#1b2a3d' }};
+    --gt-cream: {{ block.settings.color_cream | default: '#efe9dc' }};
+    --gt-green: {{ block.settings.color_green | default: '#2e5a3e' }};
+    --gt-gold: {{ block.settings.color_gold | default: '#c9a961' }};
+    --gt-bg: {{ block.settings.background_color | default: '#d9d2c3' }};
+    {% if bg_image != '' %}--gt-bg-image: url('{{ bg_image }}');{% endif %}
+  "
+  {{ block.shopify_attributes }}
+>
+  <div class="gt-spin__scrim"></div>
+  <div class="gt-spin__panel">
+    <a class="gt-spin__close" data-close hidden aria-label="Close and return to your order">&times;</a>
+
+    <header class="gt-spin__header">
+      {%- if block.settings.eyebrow != blank -%}
+        <p class="gt-spin__eyebrow">{{ block.settings.eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if block.settings.heading != blank -%}
+        <h1 class="gt-spin__heading">{{ block.settings.heading | escape }}</h1>
+      {%- endif -%}
+    </header>
+
+    <p class="gt-spin__status" data-status role="status" aria-live="polite">Checking your order…</p>
+
+    <div class="gt-spin__stage" data-stage hidden>
+      <div class="gt-spin__pointer" aria-hidden="true"></div>
+      <div class="gt-spin__rim" aria-hidden="true"></div>
+      <div class="gt-spin__wheel" data-wheel role="img" aria-label="Prize wheel"></div>
+      <div class="gt-spin__labels" data-labels aria-hidden="true"></div>
+      <div class="gt-spin__rivets" data-rivets aria-hidden="true"></div>
+      <div class="gt-spin__hub" aria-hidden="true">
+        <span class="gt-spin__hub-text">{{ block.settings.hub_text | default: 'Spin & Win' | escape }}</span>
+      </div>
+    </div>
+
+    <div class="gt-spin__actions">
+      <button type="button" class="gt-spin__button" data-spin hidden>
+        {{ block.settings.button_label | default: 'Spin the wheel' | escape }}
+      </button>
+      <button type="button" class="gt-spin__button gt-spin__button--secondary" data-retry hidden>Try again</button>
+    </div>
+
+    <div class="gt-spin__result" data-result hidden aria-live="polite"></div>
+
+    <noscript><p class="gt-spin__status">Please enable JavaScript to spin the wheel.</p></noscript>
+  </div>
+</div>
+
+{{ 'spin-page.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'spin-wheel.js' | asset_url }}" defer></script>
+<script src="{{ 'spin-page.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Spin to Win wheel",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "overlay",
+      "label": "Cover the whole page (modal style)",
+      "info": "Hides the theme header and navigation behind a full-screen overlay so the wheel is the only thing on screen.",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "A greater game awaits"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Spin to Win"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro (shown before the spin)",
+      "default": "One spin per qualifying order. Win a discount code for your next purchase or a complimentary GFJ gift."
+    },
+    {
+      "type": "text",
+      "id": "hub_text",
+      "label": "Centre medallion text",
+      "default": "Spin & Win"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Spin button label",
+      "default": "Spin the wheel"
+    },
+    {
+      "type": "text",
+      "id": "back_label",
+      "label": "Back button label",
+      "default": "Back to your order"
+    },
+    {
+      "type": "header",
+      "content": "Background"
+    },
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background image"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background colour (behind the image)",
+      "default": "#d9d2c3"
+    },
+    {
+      "type": "header",
+      "content": "Wheel colours"
+    },
+    {
+      "type": "color",
+      "id": "color_navy",
+      "label": "Navy slices and text",
+      "default": "#1b2a3d"
+    },
+    {
+      "type": "color",
+      "id": "color_cream",
+      "label": "Cream slices and text",
+      "default": "#efe9dc"
+    },
+    {
+      "type": "color",
+      "id": "color_green",
+      "label": "Green slices",
+      "default": "#2e5a3e"
+    },
+    {
+      "type": "color",
+      "id": "color_gold",
+      "label": "Gold rim, pointer and medallion",
+      "default": "#c9a961"
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "text",
+      "id": "proxy_path",
+      "label": "App proxy path",
+      "info": "Must match the app proxy in shopify.app.toml. Leave as /apps/spin.",
+      "default": "/apps/spin"
+    }
+  ]
+}
+{% endschema %}

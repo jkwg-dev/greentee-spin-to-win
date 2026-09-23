@@ -14,6 +14,8 @@ export interface OrderSnapshot {
   readonly name: string;
   readonly email: string | null;
   readonly createdAt: string;
+  /** Shopify's order status page, where the read-only extension shows the reward. */
+  readonly statusPageUrl: string | null;
   /** currentSubtotalPriceSet.shopMoney: after discounts, before tax and shipping. */
   readonly subtotal: { readonly amount: number; readonly currencyCode: string };
   readonly tags: readonly string[];

@@ -27,6 +27,7 @@ function order(over: Partial<OrderSnapshot> = {}): OrderSnapshot {
     name: "#1001",
     email: "buyer@example.com",
     createdAt: IN_WINDOW.toISOString(),
+    statusPageUrl: "https://greentee.myshopify.com/orders/abc",
     subtotal: { amount: 300, currencyCode: "CAD" },
     tags: [],
     customer: { id: "gid://shopify/Customer/1", tags: [], emailMarketingState: null },

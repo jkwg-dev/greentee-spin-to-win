@@ -17,6 +17,7 @@ export const ORDER_QUERY = /* GraphQL */ `
       email
       createdAt
       tags
+      statusPageUrl
       currentSubtotalPriceSet {
         shopMoney {
           amount
@@ -45,6 +46,7 @@ interface OrderQueryData {
     email: string | null;
     createdAt: string;
     tags: string[];
+    statusPageUrl: string | null;
     currentSubtotalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
     customer: {
       id: string;
@@ -62,6 +64,7 @@ export function toSnapshot(o: NonNullable<OrderQueryData["order"]>): OrderSnapsh
     name: o.name,
     email: o.email,
     createdAt: o.createdAt,
+    statusPageUrl: o.statusPageUrl ?? null,
     subtotal: {
       amount: Number(o.currentSubtotalPriceSet.shopMoney.amount),
       currencyCode: o.currentSubtotalPriceSet.shopMoney.currencyCode,

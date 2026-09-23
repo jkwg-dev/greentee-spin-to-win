@@ -42,6 +42,7 @@ interface RawOrder {
   email: string | null;
   createdAt: string;
   tags: string[];
+  statusPageUrl: string | null;
   currentSubtotalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
   customer: {
     id: string;
@@ -58,6 +59,7 @@ function rawOrder(id: string, over: Partial<RawOrder> = {}): RawOrder {
     email: "buyer@example.com",
     createdAt: NOW.toISOString(),
     tags: [],
+    statusPageUrl: `https://greentee.myshopify.com/orders/tok${id}`,
     currentSubtotalPriceSet: { shopMoney: { amount: "300.00", currencyCode: "CAD" } },
     customer: { id: "gid://shopify/Customer/1", tags: [], emailMarketingConsent: null },
     metafield: null,
@@ -580,6 +582,15 @@ describe("executeSpin: test users and forceSlice", () => {
 });
 
 describe("getSpinState", () => {
+  it("includes the order status URL for the back button", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    const state = await getSpinState(DISCOUNT_ORDER, deps(admin));
+    expect((state as { orderUrl?: string }).orderUrl).toBe(
+      `https://greentee.myshopify.com/orders/tok${DISCOUNT_ORDER}`,
+    );
+  });
+
   it("includes the wheel labels from config and no spin URL", async () => {
     const admin = new FakeAdmin();
     admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
@@ -587,7 +598,12 @@ describe("getSpinState", () => {
     expect(state).toMatchObject({ eligible: true });
     expect("spinUrl" in state).toBe(false);
     expect((state as { wheel?: readonly unknown[] }).wheel).toEqual(
-      SLICES.map((s) => ({ index: s.index, label: s.label })),
+      SLICES.map((s) => ({
+        index: s.index,
+        label: s.wheelLabel,
+        icon: s.icon,
+        rewardType: s.rewardType,
+      })),
     );
   });
 });
