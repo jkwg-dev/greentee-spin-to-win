@@ -96,7 +96,7 @@ function Extension() {
               image
             )}
             {state.spinUrl ? (
-              <s-button variant="primary" tone="neutral" href={state.spinUrl}>
+              <s-button variant="primary" tone="neutral" inlineSize="fill" href={state.spinUrl}>
                 Spin the wheel
               </s-button>
             ) : (
