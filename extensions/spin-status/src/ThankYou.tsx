@@ -54,49 +54,38 @@ function Extension() {
         </s-banner>
       );
 
-    case "eligible": {
-      const body = (
-        <s-stack direction="block" gap="base">
-          <s-paragraph>
-            This order qualifies for one spin. Win a discount code for your next purchase or a
-            complimentary GFJ gift.
-          </s-paragraph>
-          {state.spinUrl ? (
-            <s-button variant="primary" href={state.spinUrl}>
-              Spin the wheel
-            </s-button>
-          ) : (
-            <s-paragraph color="subdued">
-              Your spin link is being prepared. Refresh in a moment.
-            </s-paragraph>
-          )}
-          {state.testMode ? <TestBadge /> : null}
-        </s-stack>
-      );
+    case "eligible":
+      // The wheel image is the hook: first in the block, full width, large enough
+      // to read the slices. Heading, one short line and the button stack below it
+      // in reading order; scrolling a little to reach the button is fine.
       return (
-        <s-banner tone="success" heading="You've unlocked a spin on the GreenTee wheel!">
-          {wheelImage ? (
-            // Decorative image beside the text, capped at 96px, so the primary
-            // button stays above the fold on a phone instead of below a banner image.
-            <s-grid gridTemplateColumns="auto 1fr" gap="base" alignItems="center">
-              <s-box inlineSize="96px">
-                <s-image
-                  src={wheelImage}
-                  alt=""
-                  inlineSize="fill"
-                  aspectRatio="1"
-                  objectFit="contain"
-                  loading="lazy"
-                />
-              </s-box>
-              {body}
-            </s-grid>
-          ) : (
-            body
-          )}
+        <s-banner tone="success">
+          <s-stack direction="block" gap="base">
+            {wheelImage ? (
+              <s-image
+                src={wheelImage}
+                alt=""
+                inlineSize="fill"
+                aspectRatio="1"
+                objectFit="contain"
+                loading="eager"
+              />
+            ) : null}
+            <s-heading>You've unlocked a spin on the GreenTee wheel!</s-heading>
+            <s-paragraph>One spin per order. Good luck.</s-paragraph>
+            {state.spinUrl ? (
+              <s-button variant="primary" href={state.spinUrl}>
+                Spin the wheel
+              </s-button>
+            ) : (
+              <s-paragraph color="subdued">
+                Your spin link is being prepared. Refresh in a moment.
+              </s-paragraph>
+            )}
+            {state.testMode ? <TestBadge /> : null}
+          </s-stack>
         </s-banner>
       );
-    }
 
     case "spun":
       return (

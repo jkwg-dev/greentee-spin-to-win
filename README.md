@@ -89,8 +89,9 @@ Both targets call `POST /api/spin/status` with the extension session token and s
 result card, so the two pages can never disagree about a reward. The extension reads the app
 server URL from its `app_url` setting: set it in the checkout editor (Thank you page) and in the
 customer accounts editor (Order status page) after the first deploy. An optional
-`wheel_image_url` setting adds a small decorative wheel image beside the Thank you banner text,
-capped so the spin button stays above the fold on a phone; leave it blank for none. Network access must be
+`wheel_image_url` setting puts a full-width wheel image at the top of the Thank you banner, above
+the heading, large enough to read the slices; the heading, one short line and the button stack
+below it. Leave it blank for none. Network access must be
 allowed once in the Dev Dashboard under API access.
 
 The Thank you page shows three states: not eligible (encouraging banner), eligible (button

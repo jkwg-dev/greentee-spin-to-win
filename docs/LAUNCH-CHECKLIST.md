@@ -37,8 +37,8 @@ write_order_edits, read_products` and both extensions).
 - [ ] Storefront page exists at `SPIN_PAGE_URL` (e.g. `/pages/spin-to-win`), unlisted from
       navigation, with the **Spin to Win wheel** app block added and overlay mode on.
 - [ ] Checkout editor (Thank you page): add the **GreenTee Spin to Win** block and set its
-      **Spin to Win server URL** to `APP_URL`. Optionally set **Wheel image URL** to an https
-      image (a Shopify Files upload works) for the decorative wheel beside the banner text.
+      **Spin to Win server URL** to `APP_URL`. Optionally set **Wheel image URL** to a square https
+      image (a Shopify Files upload works); it renders full width at the top of the banner.
 - [ ] Customer accounts editor (Order status page): add the same block and set the URL again.
 - [ ] Shop metafield **Spin to Win campaign mode** set to `test`.
 

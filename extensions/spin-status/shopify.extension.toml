@@ -26,7 +26,7 @@ network_access = true
   key = "wheel_image_url"
   type = "single_line_text_field"
   name = "Wheel image URL (Thank you page)"
-  description = "Optional decorative wheel image shown beside the spin button. Leave blank to show none."
+  description = "Optional wheel image shown full width at the top of the Thank you banner, above the heading. Use a square image. Leave blank to show none."
 
   [[extensions.settings.fields]]
   key = "app_url"
