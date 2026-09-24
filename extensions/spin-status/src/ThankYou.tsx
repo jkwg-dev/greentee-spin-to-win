@@ -79,7 +79,11 @@ function Extension() {
                 Test spin
               </s-badge>
             ) : null}
-            <s-heading>{ELIGIBLE_HEADING}</s-heading>
+            {/* Size is fixed by the store's checkout typography (Plus-only to change);
+                weight can at least be forced to bold through strong emphasis. */}
+            <s-heading>
+              <s-text type="strong">{ELIGIBLE_HEADING}</s-text>
+            </s-heading>
             {image && state.spinUrl ? (
               // Tapping the wheel does what the button does.
               <s-clickable
