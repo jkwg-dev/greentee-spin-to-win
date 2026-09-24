@@ -14,9 +14,6 @@ import { appUrlFromSettings, imageUrlFromSettings, useSpinStatus } from "./share
 
 declare const shopify: import("@shopify/ui-extensions/purchase.thank-you.block.render").Api;
 
-/** Short, names the reward, not the mechanic. */
-const ELIGIBLE_HEADING = "You've unlocked a spin";
-
 export default function extension() {
   render(<Extension />, document.body);
 }
@@ -58,13 +55,13 @@ function Extension() {
       );
 
     case "eligible": {
-      // Three things, top to bottom: bold heading, the wheel, the button, sitting
-      // directly in the page with no container. The outer box carries vertical
-      // padding only, so the group does not crowd the blocks above and below.
+      // The wheel image carries the title (baked into the artwork, since heading
+      // size is not adjustable on this plan), then the button. Nothing else.
+      // The test badge sits last so it never competes with either.
       const image = wheelImage ? (
         <s-image
           src={wheelImage}
-          alt=""
+          alt="Spin to win"
           inlineSize="fill"
           aspectRatio="1"
           objectFit="contain"
@@ -74,16 +71,6 @@ function Extension() {
       return (
         <s-box paddingBlock="large">
           <s-stack direction="block" gap="base" alignItems="center">
-            {state.testMode ? (
-              <s-badge size="small" color="subdued">
-                Test spin
-              </s-badge>
-            ) : null}
-            {/* Size is fixed by the store's checkout typography (Plus-only to change);
-                weight can at least be forced to bold through strong emphasis. */}
-            <s-heading>
-              <s-text type="strong">{ELIGIBLE_HEADING}</s-text>
-            </s-heading>
             {image && state.spinUrl ? (
               // Tapping the wheel does what the button does.
               <s-clickable
@@ -97,8 +84,6 @@ function Extension() {
               image
             )}
             {state.spinUrl ? (
-              // Half the width of the group, centred. Colour is not settable here:
-              // it is the checkout branding's primary button colour.
               <s-box inlineSize="50%">
                 <s-button variant="primary" inlineSize="fill" href={state.spinUrl}>
                   Spin the wheel
@@ -109,6 +94,11 @@ function Extension() {
                 Your spin link is being prepared. Refresh in a moment.
               </s-paragraph>
             )}
+            {state.testMode ? (
+              <s-badge size="small" color="subdued">
+                Test spin
+              </s-badge>
+            ) : null}
           </s-stack>
         </s-box>
       );
