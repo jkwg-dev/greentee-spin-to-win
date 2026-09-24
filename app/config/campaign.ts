@@ -197,18 +197,39 @@ assertRewardTable(SLICES);
 export const CODE_FORMAT = {
   /** 32 characters, so `byte % 32` is a uniform pick with no modulo bias. */
   alphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
-  discountPrefix: "GT-",
-  testDiscountPrefix: "GT-TEST-",
+  /** Live codes are the bare eight-character suffix: customers type them on a phone. */
+  discountPrefix: "",
+  /** Test codes keep a marker so they can be found and bulk deleted. */
+  testDiscountPrefix: "TEST-",
   discountLength: 8,
   giftPrefix: "GFJ-",
   giftLength: 6,
 } as const;
 
-/** Discount titles, used by cleanup to find test discounts. */
+/** The campaign's name as it appears in Shopify admin. Reused wherever the promotion is named. */
+export const CAMPAIGN_TITLE = "2026 Oct Spin Wheel of Fortune Promotion";
+
+/**
+ * Discount titles. Live: "<campaign> - 10% Clubs". Test: "<campaign> TEST - 10% Clubs", with
+ * the marker right after the campaign name so an admin search separates them. The cleanup
+ * script matches on `testPrefix`.
+ */
 export const DISCOUNT_TITLE = {
-  prefix: "Spin",
-  testPrefix: "Spin TEST",
+  prefix: CAMPAIGN_TITLE,
+  testPrefix: `${CAMPAIGN_TITLE} TEST`,
 } as const;
+
+/** Short reward text for titles, e.g. "10% Clubs". */
+export function discountRewardShort(slice: Slice): string {
+  if (!slice.discount) throw new Error(`slice ${slice.index} is not a discount`);
+  const c = slice.discount.collection;
+  return `${slice.discount.percentage}% ${c.charAt(0).toUpperCase()}${c.slice(1)}`;
+}
+
+/** Builds the admin title for a discount created by a spin. Deterministic per slice. */
+export function discountTitle(slice: Slice, testMode: boolean): string {
+  return `${testMode ? DISCOUNT_TITLE.testPrefix : DISCOUNT_TITLE.prefix} - ${discountRewardShort(slice)}`;
+}
 
 /** Store-owned order metafield holding the spin result. */
 export const SPIN_METAFIELD = {

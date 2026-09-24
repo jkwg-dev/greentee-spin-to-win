@@ -18,7 +18,7 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `app/routes/apps.spin.state.tsx`, `apps.spin.execute.tsx`, `apps.spin.gift.tsx` — app proxy
   endpoints (state, spin, gift confirmation).
 - `scripts/setup-metafields.ts` — one-time metafield definitions.
-- `scripts/cleanup-test-data.ts` — deletes `Spin TEST` discounts and test spin records.
+- `scripts/cleanup-test-data.ts` — deletes `TEST` discounts (title marker and `TEST-` code) and test spin records.
 - `extensions/spin-status/` — checkout UI extension (Preact + Polaris web components, API 2026-07).
   `src/ThankYou.tsx` is the full flow on `purchase.thank-you.block.render`;
   `src/OrderStatus.tsx` is display only on `customer-account.order-status.block.render`.
@@ -72,15 +72,15 @@ without a deploy. It is re-read every 30 seconds. `GET /` reports the current mo
 
 Test users are orders that themselves carry the `test-user` tag (case insensitive), or whose
 email is in `TEST_EMAILS`. Customer tags are not consulted: that would need `read_customers`,
-which this app does not request. Tag the order, not the customer. Their spins are flagged `testMode`, use `GT-TEST-` codes
-and `Spin TEST` discount titles, and may pass `forceSlice` (1 to 9) to the execute endpoint.
+which this app does not request. Tag the order, not the customer. Their spins are flagged `testMode`, use `TEST-` codes
+(live codes are the bare eight characters) and titles with `TEST` after the campaign name, and may pass `forceSlice` (1 to 9) to the execute endpoint.
 Testers bypass the campaign start date so the flow can be exercised before October 1, but never
 the end date, so a stale test link cannot mint a code after the promotion closes. They bypass the
 300 CAD minimum only when `TEST_BYPASS_MIN_SUBTOTAL=true`.
 
 ```sh
 pnpm cleanup:test-data            # dry run
-pnpm cleanup:test-data -- --apply # delete Spin TEST discounts, clear test spin records
+pnpm cleanup:test-data -- --apply # delete TEST discounts, clear test spin records
 ```
 
 ## Checkout UI extension

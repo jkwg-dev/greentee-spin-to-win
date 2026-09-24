@@ -12,6 +12,7 @@ import { parseSpinResult } from "./spin-result";
 import {
   ForceSliceError,
   OrderIdError,
+  deriveCodeSuffix,
   deriveDiscountCode,
   deriveGiftReference,
   deriveOutcome,
@@ -212,20 +213,29 @@ describe("codes", () => {
   const digest = outcomeDigest(SECRET, 555);
   const alphabetRe = new RegExp(`^[${CODE_FORMAT.alphabet}]+$`);
 
-  it("formats live discount codes as GT- plus 8 unambiguous characters", () => {
+  it("formats live discount codes as the bare 8-character suffix, no prefix", () => {
     const code = deriveDiscountCode(digest);
-    expect(code.startsWith("GT-")).toBe(true);
-    expect(code.startsWith("GT-TEST-")).toBe(false);
-    const suffix = code.slice(3);
-    expect(suffix).toHaveLength(8);
-    expect(suffix).toMatch(alphabetRe);
-    expect(suffix).not.toMatch(/[O0I1]/);
+    expect(code).toHaveLength(8);
+    expect(code).toMatch(alphabetRe);
+    expect(code).not.toMatch(/[O0I1-]/);
+    expect(code).toBe(deriveCodeSuffix(digest));
   });
 
-  it("formats test discount codes as GT-TEST- with the same suffix", () => {
+  it("formats test discount codes as TEST- plus the same suffix", () => {
     const live = deriveDiscountCode(digest);
     const test = deriveDiscountCode(digest, { testMode: true });
-    expect(test).toBe("GT-TEST-" + live.slice(3));
+    expect(test).toBe("TEST-" + live);
+  });
+
+  it("keeps the suffix identical regardless of prefix: the prefix is outside the HMAC input", () => {
+    // The digest is HMAC(secret, normalisedOrderId) and the prefix is appended
+    // afterwards. An order that once produced GT-7K2Q9MXA now produces 7K2Q9MXA.
+    const suffix = deriveCodeSuffix(digest);
+    expect(deriveDiscountCode(digest)).toBe(suffix);
+    expect(deriveDiscountCode(digest, { testMode: true })).toBe("TEST-" + suffix);
+    // Legacy format reconstructed from the same digest: same eight characters.
+    expect("GT-" + suffix).toMatch(/^GT-[A-Z2-9]{8}$/);
+    expect(("GT-" + suffix).slice(3)).toBe(deriveDiscountCode(digest));
   });
 
   it("formats gift references as GFJ- plus 6 characters", () => {
@@ -250,7 +260,7 @@ describe("stale records from an older reward table", () => {
       rewardKey: "clubs_10",
       rewardLabel: "10% Off Eligible Clubs",
       rewardType: "discount",
-      code: "GT-ABCDEFGH",
+      code: "ABCDEFGH",
       expiresAt: "2026-11-02T17:00:00.000Z",
     });
     expect(parseSpinResult(raw)).toMatchObject({ sliceIndex: 10, rewardKey: "clubs_10" });
@@ -302,7 +312,7 @@ describe("identifier shape cannot change the outcome", () => {
       (v) => deriveOutcome(SECRET, v, { testMode: true }).discountCode,
     );
     expect(new Set(codes).size).toBe(1);
-    expect(codes[0].startsWith("GT-TEST-")).toBe(true);
+    expect(codes[0].startsWith("TEST-")).toBe(true);
   });
 
   it("produces the same digest for every shape", () => {

@@ -5,7 +5,8 @@ order (300 CAD subtotal or more), taken on the Thank you page right after checko
 
 ## What a customer gets
 
-- **Discount code** (75% of spins): a single-use `GT-` code for 10% off clubs, 15% off
+- **Discount code** (75% of spins): a single-use eight-character code such as `7K2Q9MXA` (no
+  prefix; letters and digits only, never O, 0, I or 1) for 10% off clubs, 15% off
   accessories or 30% off apparel, regular priced collections only. It expires with the campaign.
   The code is shown on screen and on the customer's order status page. We do not email it.
 - **Gift** (25% of spins): GFJ gloves (left hand, customer picks the size, we pick the colour),
@@ -51,9 +52,14 @@ Never delete the Spin to Win metafield. It is the record of what the customer wo
 
 ## Discount codes
 
-Codes are named `Spin <reward> #<order>` in Discounts, one per winning order. Test codes are
-`GT-TEST-...` with titles starting `Spin TEST`; those are deleted before launch and must not be
-honoured after October 1.
+In Discounts, every spin discount is titled `2026 Oct Spin Wheel of Fortune Promotion - <reward>`,
+for example `2026 Oct Spin Wheel of Fortune Promotion - 10% Clubs`, one per winning order. To
+list them, search Discounts for `2026 Oct Spin Wheel`. To find a customer's discount from their
+code, search Discounts for the code itself.
+
+Test discounts are titled `2026 Oct Spin Wheel of Fortune Promotion TEST - <reward>` and their
+codes start with `TEST-`. Search `Promotion TEST` to see only those. They are deleted before
+launch and must not be honoured after October 1.
 
 ## If the wheel needs to be switched off
 

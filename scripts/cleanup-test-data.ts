@@ -4,13 +4,14 @@
  *   pnpm cleanup:test-data            # dry run: lists what would change
  *   pnpm cleanup:test-data -- --apply # actually deletes
  *
- * 1. Deletes every discount whose title starts with "Spin TEST".
+ * 1. Deletes every discount whose title carries the campaign's TEST marker AND
+ *    whose code starts with TEST-. Both guards must hold.
  * 2. Clears the greentee_spin.result metafield from test orders. Candidates
  *    are orders carrying the test tag, plus every order created since
  *    `--since=YYYY-MM-DD` (default 2026-09-01, which covers the whole test
  *    phase, so an email-allowlisted tester's untagged order is caught too).
  *    A candidate is only cleared when its stored record is flagged testMode
- *    or uses a GT-TEST- code.
+ *    or uses a TEST- code.
  *
  * Nothing without the test prefix / flag is ever touched.
  */
@@ -36,6 +37,11 @@ const DISCOUNTS = /* GraphQL */ `
         discount {
           ... on DiscountCodeBasic {
             title
+            codes(first: 1) {
+              nodes {
+                code
+              }
+            }
           }
         }
       }
@@ -120,7 +126,12 @@ async function cleanDiscounts(admin: AdminClient): Promise<void> {
   const prefix = DISCOUNT_TITLE.testPrefix;
   let seen = 0;
   let deleted = 0;
-  for await (const node of paginate<{ id: string; discount: { title?: string } }>(
+  const codePrefix = CODE_FORMAT.testDiscountPrefix;
+  type DiscountNode = {
+    id: string;
+    discount: { title?: string; codes?: { nodes: Array<{ code: string }> } };
+  };
+  for await (const node of paginate<DiscountNode>(
     admin,
     DISCOUNTS,
     "discountNodes",
@@ -128,9 +139,18 @@ async function cleanDiscounts(admin: AdminClient): Promise<void> {
     "discountNodes",
   )) {
     const title = node.discount?.title ?? "";
-    if (!title.startsWith(prefix)) continue; // hard guard, independent of the search filter
+    const code = node.discount?.codes?.nodes[0]?.code ?? "";
+    // Two independent guards, both required: the TEST marker in the title and
+    // the TEST- code prefix. A live discount satisfies neither.
+    if (!title.startsWith(prefix)) continue;
+    if (!code.startsWith(codePrefix)) {
+      console.warn(
+        `skip ${node.id} "${title}": title says test but code "${code}" lacks ${codePrefix}`,
+      );
+      continue;
+    }
     seen++;
-    console.log(`${APPLY ? "delete" : "would delete"} discount ${node.id}  "${title}"`);
+    console.log(`${APPLY ? "delete" : "would delete"} discount ${node.id}  "${title}"  ${code}`);
     if (!APPLY) continue;
     const data = await admin.request<{
       discountCodeDelete: { deletedCodeDiscountId: string | null; userErrors: UserError[] };

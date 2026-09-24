@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DISCOUNT_TITLE, GIFT_CATALOG, GIFT_TAGS, SLICES } from "~/config/campaign";
+import { CAMPAIGN_TITLE, DISCOUNT_TITLE, GIFT_CATALOG, GIFT_TAGS, SLICES } from "~/config/campaign";
 import { loadEnv, type AppEnv } from "~/config/env.server";
 import type { AdminClient, GraphqlContext, UserError } from "~/lib/admin.server";
 import { setLogSink, type LogLine } from "~/lib/log.server";
@@ -455,12 +455,12 @@ describe("executeSpin: discount reward", () => {
       },
     });
     const code = (outcome as { result: { code: string } }).result.code;
-    expect(code).toMatch(/^GT-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
+    expect(code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
 
     const [create] = admin.ops("discountCodeBasicCreate");
     const input = create.vars.basicCodeDiscount as Record<string, unknown>;
     expect(input).toMatchObject({
-      title: `${DISCOUNT_TITLE.prefix} 10% Off Eligible Clubs #${1000 + Number(DISCOUNT_ORDER)}`,
+      title: `${CAMPAIGN_TITLE} - 10% Clubs`,
       code,
       usageLimit: 1,
       appliesOncePerCustomer: true,
@@ -684,11 +684,13 @@ describe("executeSpin: test users and forceSlice", () => {
       result: { sliceIndex: 6, rewardKey: "apparel_30", testMode: true },
     });
     const code = (outcome as { result: { code: string } }).result.code;
-    expect(code.startsWith("GT-TEST-")).toBe(true);
+    expect(code.startsWith("TEST-")).toBe(true);
+    expect(code).toMatch(/^TEST-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
     const input = admin.ops("discountCodeBasicCreate")[0].vars.basicCodeDiscount as {
       title: string;
       customerGets: unknown;
     };
+    expect(input.title).toBe(`${CAMPAIGN_TITLE} TEST - 30% Apparel`);
     expect(input.title.startsWith(DISCOUNT_TITLE.testPrefix)).toBe(true);
     expect(input.customerGets).toMatchObject({
       value: { percentage: 0.3 },

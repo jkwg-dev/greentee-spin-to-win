@@ -86,7 +86,12 @@ Each discount reward creates one single use code through `discountCodeBasicCreat
 - `combinesWith`: product, order, and shipping discounts all false.
 - `endsAt` is the campaign end (November 2, 2026, 09:00 America/Vancouver). All codes expire
   together when the campaign closes.
-- Code format: `GT-` plus 8 characters from an unambiguous alphabet (no O, 0, I, 1).
+- Code format: 8 characters from an unambiguous alphabet (no O, 0, I, 1), no prefix, e.g.
+  `7K2Q9MXA`. Customers type these on a phone and staff read them aloud. Test codes alone carry a
+  prefix: `TEST-7K2Q9MXA`.
+- Discount title: `CAMPAIGN_TITLE` from `campaign.ts` ("2026 Oct Spin Wheel of Fortune
+  Promotion") with the reward appended, e.g. `2026 Oct Spin Wheel of Fortune Promotion - 10%
+  Clubs`. Test discounts insert `TEST` after the campaign name: `... Promotion TEST - 10% Clubs`.
 
 ### Gift rewards
 
@@ -220,7 +225,7 @@ Value shape:
   "rewardKey": "accessories_15",
   "rewardLabel": "15% Off Eligible Accessories",
   "rewardType": "discount",
-  "code": "GT-7K2Q9MXA",
+  "code": "7K2Q9MXA",
   "discountNodeId": "gid://shopify/DiscountCodeNode/123456789",
   "expiresAt": "2026-11-02T17:00:00.000Z",
   "email": "customer@example.com",
@@ -308,8 +313,8 @@ the order tag is the reliable route.
 - If `TEST_BYPASS_MIN_SUBTOTAL` is true, the 300 CAD minimum is skipped for them, so testers do
   not have to place expensive real orders. It never applies to anyone else.
 - The stored metafield includes `"testMode": true`.
-- Generated discount codes use the prefix `GT-TEST-` instead of `GT-`, and the discount title is
-  prefixed `Spin TEST` so they are trivial to filter and bulk delete afterwards.
+- Generated discount codes carry the prefix `TEST-` (live codes have none), and the discount
+  title carries `TEST` after the campaign name, so they are trivial to filter and bulk delete.
 
 ### Forcing an outcome
 
@@ -320,7 +325,8 @@ test user, and record `"forced": true` in the metafield when it is used.
 
 ### Cleanup
 
-Provide a script that lists every discount whose title starts with `Spin TEST` and deletes them,
+Provide a script that lists every discount whose title carries the `TEST` marker and whose code
+starts with `TEST-` (both guards required) and deletes them,
 and that clears the spin metafield from tagged test orders. Run it before launch. Never let it
 touch anything without the test prefix.
 

@@ -3,7 +3,7 @@
  * injected so the whole flow, including the idempotency path, is unit tested.
  */
 import {
-  DISCOUNT_TITLE,
+  discountTitle,
   REWARD_TYPE_LABELS,
   SLICES,
   rewardOdds,
@@ -408,7 +408,7 @@ export async function executeSpin(
   let gift: GiftRecord | null = null;
 
   if (slice.rewardType === "discount" && slice.discount) {
-    const title = `${tester ? DISCOUNT_TITLE.testPrefix : DISCOUNT_TITLE.prefix} ${slice.label} ${order.name}`;
+    const title = discountTitle(slice, tester);
     try {
       const ensured = await ensureDiscount(deps.admin, {
         orderId: id,

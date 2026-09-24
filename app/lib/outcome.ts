@@ -116,14 +116,14 @@ function charsFrom(digest: Buffer, start: number, end: number): string {
 export interface DerivedOutcome {
   readonly roll: number;
   readonly slice: Slice;
-  /** GT-XXXXXXXX (or GT-TEST-XXXXXXXX). Only meaningful for discount slices. */
+  /** XXXXXXXX (or TEST-XXXXXXXX). Only meaningful for discount slices. */
   readonly discountCode: string;
   /** GFJ-XXXXXX. Only meaningful for gift slices. */
   readonly giftReference: string;
 }
 
 export interface DeriveOptions {
-  /** Test-user spins use the GT-TEST- prefix so they can be bulk deleted later. */
+  /** Test-user spins carry the TEST- prefix so they can be bulk deleted later. */
   readonly testMode?: boolean;
 }
 
