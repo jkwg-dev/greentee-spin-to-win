@@ -20,6 +20,10 @@ below the fold happens before the app is deployed and installed with the right s
 - [ ] `pnpm deploy` succeeds (app version with scopes `write_orders, write_discounts,
 write_order_edits, read_products` and both extensions).
 - [ ] Dev Dashboard, the app, Installs, the store: approve the scope change (or reinstall).
+- [ ] After `shopify app deploy`, open the app in the Dev Dashboard and confirm the config
+      actually landed: App URL and the allowed redirect point at the Vercel host, and **App proxy**
+      shows `/apps/spin` to `<app>/apps/spin`. A deploy can push only the extensions and leave the
+      config behind, in which case the proxy is missing and the spin page cannot reach the app.
 - [ ] Dev Dashboard, API access: allow network access for checkout UI extensions.
 - [ ] Dev Dashboard, API access: protected customer data, including the email field.
 - [ ] `pnpm check:scopes` prints "all required scopes granted".
