@@ -104,9 +104,9 @@ start from the Thank you page.
 Add the "Spin to Win wheel" app block to the storefront page that `SPIN_PAGE_URL` points at.
 By default the block renders as a full-screen layer: at load it moves itself to `<body>` (a
 theme section carrying `transform`, `filter` or `overflow` would otherwise trap a fixed layer
-inside itself), covers the viewport above every theme element, locks scroll behind it, and dims
-the theme underneath as a backdrop, so the page reads as a modal opened over checkout rather
-than a navigation away from it. The close control returns to the order's own status page. A
+inside itself), covers the viewport above every theme element on a solid black backdrop, and
+locks scroll behind it, so nothing from the storefront theme is visible and the page reads as a
+modal opened over checkout rather than a navigation away from it. The close control returns to the order's own status page. A
 background image, colours, copy and the promotion rules URL are block settings; the rules link
 renders only when the URL is set.
 

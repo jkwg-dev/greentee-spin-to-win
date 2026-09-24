@@ -27,10 +27,12 @@
  * Overlay mode. The script moves this element to <body> at runtime, because a
  * theme section with transform/filter/overflow makes position: fixed relative
  * to that section instead of the viewport. Once on <body> the layer covers
- * the whole viewport; the theme stays underneath as a dimmed backdrop.
+ * the whole viewport. The backdrop is solid black: this page cannot sit over
+ * the real Thank you page, and a dimmed storefront theme behind it read as
+ * "you left checkout", so nothing of the theme is shown.
  */
 .gt-spin--overlay {
-  --gt-scrim: rgba(10, 16, 26, 0.62);
+  --gt-scrim: #000;
   position: fixed;
   inset: 0;
   z-index: 2147483000;
