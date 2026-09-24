@@ -348,13 +348,14 @@ html.gt-spin-open body {
 /* The code box: full width, code left, icon right, the whole box copies. */
 .gt-spin__code-box {
   appearance: none;
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: center;
   width: 100%;
   margin: 0.25rem 0 0.9rem;
-  padding: 0.85rem 1rem;
+  /* Symmetric inset so the code is centred on the box, not on the free space. */
+  padding: 0.85rem 3rem;
   border: 2px dashed var(--gt-navy);
   border-radius: 10px;
   background: #fff;
@@ -373,13 +374,24 @@ html.gt-spin-open body {
 }
 
 .gt-spin__code-text {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
+  text-align: center;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 1.35rem;
   letter-spacing: 0.1em;
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+.gt-spin__code-side {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transform: translateY(-50%);
 }
 
 .gt-spin__code-copied {

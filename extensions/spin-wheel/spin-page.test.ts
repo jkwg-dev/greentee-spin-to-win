@@ -280,6 +280,8 @@ describe("spin page: spin and results", () => {
     expect(codeBox.getAttribute("aria-label")).toBe("Copy discount code");
     expect(codeBox.querySelector(".gt-spin__code-text")?.textContent).toBe(RESULT.code);
     expect(result.querySelector(".gt-spin__tag--result")).toBeNull();
+    // Odds disclosure and rules link are gone once there is a result.
+    expect(p.el("[data-odds]").hidden).toBe(true);
     // Primary: apply the code and land on the matching collection.
     const primary = result.querySelector<HTMLAnchorElement>("a.gt-spin__primary")!;
     expect(primary.textContent).toBe("Shop accessories with code applied");

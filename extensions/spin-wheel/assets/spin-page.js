@@ -494,6 +494,8 @@
     setStatus("", false);
     show(els.spin, false);
     show(els.retry, false);
+    // The odds disclosure and rules link only matter before the spin.
+    if (els.odds) show(els.odds, false);
     var box = els.result;
     while (box.firstChild) box.removeChild(box.firstChild);
     box.classList.toggle("gt-spin__result--expired", !!result.expired);
@@ -560,9 +562,12 @@
     var icon = el("span", "gt-spin__code-icon");
     icon.setAttribute("aria-hidden", "true");
     icon.innerHTML = ICON_COPY;
+    // The code is centred in the box; the copy state sits over the right edge.
+    var side = el("span", "gt-spin__code-side");
+    side.appendChild(copied);
+    side.appendChild(icon);
     btn.appendChild(text);
-    btn.appendChild(copied);
-    btn.appendChild(icon);
+    btn.appendChild(side);
     var live = el("span", "gt-spin__sr");
     live.setAttribute("aria-live", "polite");
     box.appendChild(btn);
