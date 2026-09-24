@@ -58,9 +58,6 @@ function Extension() {
       );
 
     case "eligible": {
-      // The button is tone="neutral": primary buttons otherwise take the checkout
-      // branding accent (blue on this store), and an extension cannot set its own
-      // colour. Neutral is the black treatment.
       // Three things, top to bottom: bold heading, the wheel, the button, sitting
       // directly in the page with no container. The outer box carries vertical
       // padding only, so the group does not crowd the blocks above and below.
@@ -96,9 +93,13 @@ function Extension() {
               image
             )}
             {state.spinUrl ? (
-              <s-button variant="primary" tone="neutral" inlineSize="fill" href={state.spinUrl}>
-                Spin the wheel
-              </s-button>
+              // Half the width of the group, centred. Colour is not settable here:
+              // it is the checkout branding's primary button colour.
+              <s-box inlineSize="50%">
+                <s-button variant="primary" inlineSize="fill" href={state.spinUrl}>
+                  Spin the wheel
+                </s-button>
+              </s-box>
             ) : (
               <s-paragraph color="subdued" textAlign="center">
                 Your spin link is being prepared. Refresh in a moment.
