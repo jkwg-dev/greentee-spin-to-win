@@ -128,6 +128,11 @@ Logs are JSON lines and every event about an order carries `orderId` (the numeri
 | `gift.added` / `gift.confirm.done` / `gift.confirm.unavailable` / `gift.confirm.edit_failed` | the gift step                                                        |
 | `status.unauthorized` / `proxy.rejected` / `proxy.invalid_token`                             | rejected requests (no order ID: the request never got that far)      |
 
+A `status.unauthorized` with `reason: "shop"` prints both sides of the comparison:
+`tokenDest` (the raw claim), `tokenDestHost` (normalised), `expectedShopDomain` and
+`expectedAltDomains`. If `tokenDestHost` is a real host that is not `SHOP_DOMAIN`, add it to
+`SHOP_ALT_DOMAINS`. If it is `null`, the token carried no usable `dest` claim.
+
 ## Gifts
 
 Gift wins are added to the order through the Order Editing API (`write_order_edits`,

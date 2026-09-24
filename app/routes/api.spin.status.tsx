@@ -35,7 +35,16 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!session.ok) {
     log.warn("status.unauthorized", {
       reason: session.reason,
-      ...("dest" in session ? { dest: session.dest } : {}),
+      // For reason "shop", print both sides of the comparison so the fix is
+      // obvious from one line: what the token claimed and what we accept.
+      ...(session.reason === "shop"
+        ? {
+            tokenDest: session.dest ?? null,
+            tokenDestHost: session.destHost ?? null,
+            expectedShopDomain: session.expected ?? null,
+            expectedAltDomains: session.expectedAlt ?? [],
+          }
+        : {}),
     });
     return json({ error: "unauthorized", reason: session.reason }, { status: 401, cors: true });
   }

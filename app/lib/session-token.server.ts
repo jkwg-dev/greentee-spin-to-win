@@ -5,6 +5,7 @@
  * ID) and the destination shop.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { normalizeHost } from "~/lib/host";
 
 export interface SessionTokenClaims {
   readonly iss?: string;
@@ -19,14 +20,22 @@ export interface SessionTokenClaims {
   readonly [k: string]: unknown;
 }
 
+export type SessionTokenFailureReason =
+  "malformed" | "algorithm" | "signature" | "expired" | "not_yet_valid" | "audience" | "shop";
+
 export type SessionTokenResult =
   | { ok: true; claims: SessionTokenClaims }
   | {
       ok: false;
-      reason:
-        "malformed" | "algorithm" | "signature" | "expired" | "not_yet_valid" | "audience" | "shop";
-      /** For "shop": the host the token named, so a mismatch is diagnosable from logs. */
-      dest?: string;
+      reason: SessionTokenFailureReason;
+      /** Raw `dest` claim, for reason "shop". Null when the claim is absent. */
+      dest?: string | null;
+      /** `dest` reduced to a hostname, for reason "shop". Null when unparseable. */
+      destHost?: string | null;
+      /** The host we expected, for reason "shop". */
+      expected?: string;
+      /** Additional accepted hosts from SHOP_ALT_DOMAINS, for reason "shop". */
+      expectedAlt?: readonly string[];
     };
 
 export interface SessionTokenOptions {
@@ -82,16 +91,22 @@ export function verifySessionToken(
     return { ok: false, reason: "not_yet_valid" };
   if (claims.aud !== opts.apiKey) return { ok: false, reason: "audience" };
 
-  let destHost: string | undefined;
-  try {
-    destHost = claims.dest ? new URL(claims.dest).host.toLowerCase() : undefined;
-  } catch {
-    destHost = undefined;
+  // `dest` may be a full URL or a bare host depending on the surface, so it is
+  // normalised rather than passed straight to `new URL()`.
+  const expectedHost = normalizeHost(opts.shopDomain) ?? opts.shopDomain.toLowerCase();
+  const destHost = normalizeHost(claims.dest);
+  const alt = opts.altDomains ?? new Set<string>();
+  const accepted = destHost !== null && (destHost === expectedHost || alt.has(destHost));
+  if (!accepted) {
+    return {
+      ok: false,
+      reason: "shop",
+      dest: typeof claims.dest === "string" ? claims.dest : null,
+      destHost,
+      expected: expectedHost,
+      expectedAlt: [...alt],
+    };
   }
-  const accepted =
-    destHost === opts.shopDomain.toLowerCase() ||
-    (destHost !== undefined && opts.altDomains?.has(destHost) === true);
-  if (!accepted) return { ok: false, reason: "shop", dest: destHost };
 
   return { ok: true, claims };
 }

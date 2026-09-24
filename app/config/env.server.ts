@@ -13,6 +13,7 @@ import {
   type CampaignMode,
   type DiscountCollectionKey,
 } from "~/config/campaign";
+import { normalizeHost } from "~/lib/host";
 import { parseInZone } from "~/lib/time";
 
 export interface AppEnv {
@@ -141,17 +142,13 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
     problems.push("SHOP_DOMAIN must be the store's *.myshopify.com domain");
   }
 
+  // Comma separated. Normalised with the same function the token check uses,
+  // so "https://Shop.Example.com/" and "shop.example.com" are the same entry.
   const shopAltDomains = new Set(
     (str(source, "SHOP_ALT_DOMAINS") ?? "")
       .split(",")
-      .map((d) =>
-        d
-          .trim()
-          .toLowerCase()
-          .replace(/^https?:\/\//, "")
-          .replace(/\/.*$/, ""),
-      )
-      .filter((d) => d !== ""),
+      .map((d) => normalizeHost(d))
+      .filter((d): d is string => d !== null),
   );
 
   // Where the Thank you page sends customers to spin. Defaults to the

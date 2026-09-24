@@ -14,15 +14,24 @@ export interface LogLine extends LogFields {
 
 type Sink = (line: LogLine) => void;
 
+/**
+ * `undefined` is dropped by JSON.stringify, which silently removes a field
+ * from a log line. A diagnostic that disappears exactly when the value is
+ * missing is worse than useless, so undefined is serialised as null.
+ */
+function stringifyLine(line: LogLine): string {
+  return JSON.stringify(line, (_key, value) => (value === undefined ? null : value));
+}
+
 let sink: Sink = (line) => {
-  const text = JSON.stringify(line);
+  const text = stringifyLine(line);
   if (line.level === "error" || line.level === "warn") process.stderr.write(text + "\n");
   else process.stdout.write(text + "\n");
 };
 
 /** Test hook: capture log lines instead of printing them. */
 export function setLogSink(next: Sink | null): void {
-  sink = next ?? ((line) => process.stdout.write(JSON.stringify(line) + "\n"));
+  sink = next ?? ((line) => process.stdout.write(stringifyLine(line) + "\n"));
 }
 
 export function serializeError(err: unknown): LogFields {

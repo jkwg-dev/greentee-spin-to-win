@@ -99,12 +99,12 @@ describe("loadEnv", () => {
 });
 
 describe("SHOP_ALT_DOMAINS", () => {
-  it("parses a comma list of hosts, stripping scheme and paths", () => {
+  it("parses a comma list of hosts, stripping scheme, port, path and case", () => {
     const env = loadEnv({
       ...VALID,
-      SHOP_ALT_DOMAINS: " https://www.GreenTeeGolf.ca/, shop.greenteegolf.ca ",
+      SHOP_ALT_DOMAINS: " https://www.GreenTeeGolf.ca/, shop.greenteegolfshop.com , ",
     });
-    expect([...env.shopAltDomains]).toEqual(["www.greenteegolf.ca", "shop.greenteegolf.ca"]);
+    expect([...env.shopAltDomains]).toEqual(["www.greenteegolf.ca", "shop.greenteegolfshop.com"]);
     expect(loadEnv(VALID).shopAltDomains.size).toBe(0);
   });
 });

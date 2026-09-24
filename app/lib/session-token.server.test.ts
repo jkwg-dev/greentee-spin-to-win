@@ -64,16 +64,48 @@ describe("verifySessionToken", () => {
     expect(verifySessionToken(jwt({ ...good, dest: "https://evil.myshopify.com" }), opts)).toEqual({
       ok: false,
       reason: "shop",
-      dest: "evil.myshopify.com",
+      dest: "https://evil.myshopify.com",
+      destHost: "evil.myshopify.com",
+      expected: SHOP,
+      expectedAlt: [],
     });
   });
 
-  it("accepts an allow-listed alternate shop host", () => {
-    const alt = { ...opts, altDomains: new Set(["www.greenteegolf.ca"]) };
-    expect(verifySessionToken(jwt({ ...good, dest: "https://www.greenteegolf.ca" }), alt).ok).toBe(
+  it("accepts a bare-host dest claim, with or without a scheme", () => {
+    // Shopify does not guarantee a scheme on `dest`. Parsing it with `new URL()`
+    // alone threw, which rejected every token from that surface.
+    expect(verifySessionToken(jwt({ ...good, dest: SHOP }), opts).ok).toBe(true);
+    expect(verifySessionToken(jwt({ ...good, dest: `${SHOP}/` }), opts).ok).toBe(true);
+    expect(
+      verifySessionToken(jwt({ ...good, dest: `HTTPS://${SHOP.toUpperCase()}/` }), opts).ok,
+    ).toBe(true);
+  });
+
+  it("accepts an allow-listed alternate shop host from SHOP_ALT_DOMAINS", () => {
+    const alt = { ...opts, altDomains: new Set(["shop.greenteegolfshop.com"]) };
+    expect(verifySessionToken(jwt({ ...good, dest: "shop.greenteegolfshop.com" }), alt).ok).toBe(
       true,
     );
-    expect(verifySessionToken(jwt({ ...good, dest: "https://other.example" }), alt).ok).toBe(false);
+    expect(
+      verifySessionToken(jwt({ ...good, dest: "https://shop.greenteegolfshop.com/" }), alt).ok,
+    ).toBe(true);
+    expect(verifySessionToken(jwt({ ...good, dest: "other.example" }), alt)).toMatchObject({
+      ok: false,
+      reason: "shop",
+      destHost: "other.example",
+      expectedAlt: ["shop.greenteegolfshop.com"],
+    });
+  });
+
+  it("reports a missing or unparseable dest instead of hiding it", () => {
+    const { dest: _omit, ...noDest } = good;
+    expect(verifySessionToken(jwt(noDest), opts)).toMatchObject({
+      ok: false,
+      reason: "shop",
+      dest: null,
+      destHost: null,
+      expected: SHOP,
+    });
   });
 
   it("allows small clock skew", () => {
