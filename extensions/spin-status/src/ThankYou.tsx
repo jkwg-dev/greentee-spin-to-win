@@ -9,10 +9,17 @@
  */
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
+import { SLICES } from "../../../app/config/campaign";
 import { SpinResult, TestBadge } from "./shared/SpinResult";
 import { appUrlFromSettings, imageUrlFromSettings, useSpinStatus } from "./shared/useSpinStatus";
 
 declare const shopify: import("@shopify/ui-extensions/purchase.thank-you.block.render").Api;
+
+/** The best discount on the wheel, from the reward table, so the copy cannot drift from it. */
+const MAX_DISCOUNT = Math.max(...SLICES.map((s) => s.discount?.percentage ?? 0));
+
+/** One line, reward first. It replaces a heading plus a supporting line that said the same thing. */
+const ELIGIBLE_LINE = `You've unlocked a spin. Win up to ${MAX_DISCOUNT}% off or a free GFJ gift.`;
 
 export default function extension() {
   render(<Extension />, document.body);
@@ -55,12 +62,17 @@ function Extension() {
       );
 
     case "eligible":
-      // The wheel image is the hook: first in the block, full width, large enough
-      // to read the slices. Heading, one short line and the button stack below it
-      // in reading order; scrolling a little to reach the button is fine.
+      // A plain box rather than a banner: a banner draws its own status icon,
+      // which sat alone above the wheel. Everything shares the wheel's centre
+      // axis, and the line and button are one tight group beneath it.
       return (
-        <s-banner tone="success">
-          <s-stack direction="block" gap="base">
+        <s-box padding="base" border="base" borderRadius="base" background="subdued">
+          <s-stack direction="block" gap="base" alignItems="center">
+            {state.testMode ? (
+              <s-badge size="small" color="subdued">
+                Test spin
+              </s-badge>
+            ) : null}
             {wheelImage ? (
               <s-image
                 src={wheelImage}
@@ -71,20 +83,22 @@ function Extension() {
                 loading="eager"
               />
             ) : null}
-            <s-heading>You've unlocked a spin on the GreenTee wheel!</s-heading>
-            <s-paragraph>One spin per order. Good luck.</s-paragraph>
-            {state.spinUrl ? (
-              <s-button variant="primary" href={state.spinUrl}>
-                Spin the wheel
-              </s-button>
-            ) : (
-              <s-paragraph color="subdued">
-                Your spin link is being prepared. Refresh in a moment.
+            <s-stack direction="block" gap="small-200" alignItems="center">
+              <s-paragraph textAlign="center">
+                <s-text type="strong">{ELIGIBLE_LINE}</s-text>
               </s-paragraph>
-            )}
-            {state.testMode ? <TestBadge /> : null}
+              {state.spinUrl ? (
+                <s-button variant="primary" href={state.spinUrl}>
+                  Spin the wheel
+                </s-button>
+              ) : (
+                <s-paragraph color="subdued" textAlign="center">
+                  Your spin link is being prepared. Refresh in a moment.
+                </s-paragraph>
+              )}
+            </s-stack>
           </s-stack>
-        </s-banner>
+        </s-box>
       );
 
     case "spun":
