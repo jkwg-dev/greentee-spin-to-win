@@ -12,9 +12,11 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `app/lib/spin.server.ts` — the spin use cases (status, state, execute) with the idempotency path.
 - `app/lib/admin.server.ts` — Admin GraphQL wrapper; client credentials grant, throttle aware, logs
   operation, order ID and `userErrors` on every call.
-- `app/lib/gifts.server.ts` — gift issuance boundary (Order Editing API, not yet implemented).
+- `app/lib/gifts.server.ts` — gift stock rules and issuance through the Order Editing API.
+- `app/lib/host.ts` — host normalisation shared by the session token check and `SHOP_ALT_DOMAINS`.
 - `app/routes/api.spin.status.tsx` — `POST /api/spin/status`, session token protected, CORS.
-- `app/routes/apps.spin.state.tsx`, `apps.spin.execute.tsx` — app proxy endpoints.
+- `app/routes/apps.spin.state.tsx`, `apps.spin.execute.tsx`, `apps.spin.gift.tsx` — app proxy
+  endpoints (state, spin, gift confirmation).
 - `scripts/setup-metafields.ts` — one-time metafield definitions.
 - `scripts/cleanup-test-data.ts` — deletes `Spin TEST` discounts and test spin records.
 - `extensions/spin-status/` — checkout UI extension (Preact + Polaris web components, API 2026-07).
@@ -71,8 +73,9 @@ without a deploy. It is re-read every 30 seconds. `GET /` reports the current mo
 Test users are orders whose customer or order carries the `test-user` tag (case insensitive),
 or whose email is in `TEST_EMAILS`. Their spins are flagged `testMode`, use `GT-TEST-` codes
 and `Spin TEST` discount titles, and may pass `forceSlice` (1 to 9) to the execute endpoint.
-Testers bypass the campaign window so the flow can be exercised before October 1, and bypass
-the 300 CAD minimum only when `TEST_BYPASS_MIN_SUBTOTAL=true`.
+Testers bypass the campaign start date so the flow can be exercised before October 1, but never
+the end date, so a stale test link cannot mint a code after the promotion closes. They bypass the
+300 CAD minimum only when `TEST_BYPASS_MIN_SUBTOTAL=true`.
 
 ```sh
 pnpm cleanup:test-data            # dry run
