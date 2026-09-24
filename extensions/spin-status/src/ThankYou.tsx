@@ -58,8 +58,9 @@ function Extension() {
       );
 
     case "eligible": {
-      // Three things, top to bottom: bold heading, the wheel, the button.
-      // Everything centred on the wheel's axis; nothing under the button.
+      // Three things, top to bottom: bold heading, the wheel, the button, sitting
+      // directly in the page with no container. The outer box carries vertical
+      // padding only, so the group does not crowd the blocks above and below.
       const image = wheelImage ? (
         <s-image
           src={wheelImage}
@@ -71,7 +72,7 @@ function Extension() {
         />
       ) : null;
       return (
-        <s-box padding="base" border="base" borderRadius="base" background="subdued">
+        <s-box paddingBlock="large">
           <s-stack direction="block" gap="base" alignItems="center">
             {state.testMode ? (
               <s-badge size="small" color="subdued">
