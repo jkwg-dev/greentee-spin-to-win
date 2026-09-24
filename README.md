@@ -150,8 +150,9 @@ Gift wins are added to the order through the Order Editing API (`write_order_edi
 `read_products`). Product and variant identity lives in `GIFT_CATALOG` in
 `app/config/campaign.ts`. On a gift spin the record is written with `gift.status = "pending"` and
 the order is tagged `gift-pending` before anything else. The spin page then shows the gift step
-(glove: size selector; socks and brush: confirm only). `POST /apps/spin/gift` picks the colour
-with the most stock, adds the variant at 100% off, commits without notifying the customer,
+(glove: hand and size in one step, with out-of-stock combinations disabled; socks and brush:
+confirm only). `POST /apps/spin/gift` resolves the variant
+(colour by most stock for socks and brush; the glove is White only), adds it at 100% off, commits without notifying the customer,
 records the line, and flips the tag to `gift-added`. Out of stock means no edit, a contact-us
 message, and the tag stays `gift-pending` for staff.
 

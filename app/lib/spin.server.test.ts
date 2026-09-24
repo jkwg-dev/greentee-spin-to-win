@@ -63,21 +63,18 @@ interface RawLine {
   discounted: string;
 }
 
-/** LH gloves in three colours for the given sizes: size -> [BLACK, CAMO1, CAMO2] stock. */
-function gloveVariants(stock: Record<string, [number, number, number]>): RawVariant[] {
-  const out: RawVariant[] = [];
+/** Aura gloves: Hand x Size, Colour White only. stock keyed "LH/22" -> quantity. */
+function gloveVariants(stock: Record<string, number>): RawVariant[] {
   let n = 1;
-  for (const [size, s] of Object.entries(stock)) {
-    for (const [i, color] of ["BLACK", "CAMO1(BLUE)", "CAMO2(ORANGE)"].entries()) {
-      out.push({
-        id: `gid://shopify/ProductVariant/g${n++}`,
-        title: `LH / ${color} / ${size}`,
-        inventoryQuantity: s[i],
-        options: { Hand: "LH", Color: color, Size: size },
-      });
-    }
-  }
-  return out;
+  return Object.entries(stock).map(([k, qty]) => {
+    const [hand, size] = k.split("/");
+    return {
+      id: `gid://shopify/ProductVariant/g${n++}`,
+      title: `${hand} / ${size} / White`,
+      inventoryQuantity: qty,
+      options: { Hand: hand, Size: size, Colour: "White" },
+    };
+  });
 }
 
 function sockVariants(stock: Record<string, number>): RawVariant[] {
@@ -627,22 +624,27 @@ describe("executeSpin: gates", () => {
     admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
     admin.products.set(
       GIFT_CATALOG.gift_gloves.productId,
-      gloveVariants({ "22": [2, 5, 1], "23": [0, -4, 0] }),
+      gloveVariants({ "LH/22": 2, "RH/22": 5, "LH/23": 0, "RH/23": -4 }),
     );
     const outcome = await executeSpin(GLOVE_ORDER, {}, deps(admin));
     expect(outcome).toMatchObject({
       result: { rewardType: "gift", code: null, gift: { status: "pending" } },
       giftOffer: {
-        customerOption: "Size",
-        preselect: "22",
+        preselect: { Hand: "RH", Size: "22" },
         anyAvailable: true,
         imageUrl: "https://cdn.example/gift.jpg",
       },
     });
-    const offer = (outcome as unknown as { giftOffer: { choices: unknown[] } }).giftOffer;
-    expect(offer.choices).toEqual([
-      { value: "22", available: true, stock: 8 },
-      { value: "23", available: false, stock: 0 },
+    const offer = (
+      outcome as unknown as { giftOffer: { options: unknown[]; combinations: unknown[] } }
+    ).giftOffer;
+    expect(offer.options).toEqual([
+      { name: "Hand", values: ["LH", "RH"] },
+      { name: "Size", values: ["22", "23"] },
+    ]);
+    expect(offer.combinations).toEqual([
+      { selection: { Hand: "LH", Size: "22" }, stock: 2 },
+      { selection: { Hand: "RH", Size: "22" }, stock: 5 },
     ]);
     const ops = admin.calls
       .map((c) => c.op)
@@ -794,22 +796,30 @@ describe("getSpinState", () => {
 });
 
 describe("confirmGift", () => {
-  function gloveOrder(stock: Record<string, [number, number, number]>) {
+  function gloveOrder(stock: Record<string, number>) {
     const admin = new FakeAdmin();
     admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
     admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants(stock));
     return admin;
   }
 
-  it("adds the chosen size in the colour with most stock at 100% off, then flips the tag", async () => {
-    const admin = gloveOrder({ "22": [2, 5, 1] });
+  it("adds the chosen hand and size at 100% off, then flips the tag", async () => {
+    const admin = gloveOrder({ "LH/22": 2, "RH/22": 5 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     admin.calls.length = 0;
 
-    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const done = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
     expect(done).toMatchObject({
       result: {
-        gift: { status: "added", variantTitle: "LH / CAMO1(BLUE) / 22", selection: { Size: "22" } },
+        gift: {
+          status: "added",
+          variantTitle: "LH / 22 / White",
+          selection: { Hand: "LH", Size: "22" },
+        },
       },
       giftOffer: null,
     });
@@ -836,7 +846,7 @@ describe("confirmGift", () => {
     const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
     expect(record.gift).toMatchObject({
       status: "added",
-      variantId: "gid://shopify/ProductVariant/g2",
+      variantId: "gid://shopify/ProductVariant/g1",
       lineItemId: "gid://shopify/LineItem/100",
       orderEditId: "gid://shopify/CalculatedOrder/900",
     });
@@ -852,17 +862,21 @@ describe("confirmGift", () => {
     );
     const spun = await executeSpin(SOCKS_ORDER, {}, deps(admin));
     expect(spun).toMatchObject({
-      giftOffer: { customerOption: null, choices: null, anyAvailable: true },
+      giftOffer: { options: [], combinations: [], anyAvailable: true },
     });
     const done = await confirmGift(SOCKS_ORDER, {}, deps(admin));
     expect(done.result.gift).toMatchObject({ status: "added", variantTitle: "Beige" });
   });
 
-  it("does not edit the order when every colour of the chosen size is out of stock or oversold", async () => {
-    const admin = gloveOrder({ "22": [0, -3, 0], "23": [4, 0, 0] });
+  it("does not edit the order when the chosen hand and size is out of stock or oversold", async () => {
+    const admin = gloveOrder({ "LH/22": 0, "RH/22": -3, "LH/23": 4 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     admin.calls.length = 0;
-    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const done = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
     expect(done).toMatchObject({
       result: { gift: { status: "unavailable" } },
       message: expect.stringMatching(/contact us/i),
@@ -870,24 +884,34 @@ describe("confirmGift", () => {
     expect(admin.ops("orderEditBegin")).toHaveLength(0);
     expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.pending]);
     const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
-    expect(record.gift.reason).toMatch(/no_stock for {"Size":"22"}/);
-    // Never substitutes: size 23 was in stock and was not used.
+    expect(record.gift.reason).toMatch(/no_stock for {"Hand":"LH","Size":"22"}/);
+    // Never substitutes: LH/23 was in stock and was not used.
     expect(admin.lines.get(GLOVE_ORDER) ?? []).toHaveLength(0);
     // Stock comes back: a retry adds it.
-    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants({ "22": [1, 0, 0] }));
-    const retry = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
-    expect(retry.result.gift).toMatchObject({ status: "added", variantTitle: "LH / BLACK / 22" });
+    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants({ "LH/22": 1 }));
+    const retry = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
+    expect(retry.result.gift).toMatchObject({ status: "added", variantTitle: "LH / 22 / White" });
   });
 
-  it("requires a size for gloves and rejects an unknown size", async () => {
-    const admin = gloveOrder({ "22": [1, 1, 1] });
+  it("requires both hand and size for gloves and rejects an unknown value", async () => {
+    const admin = gloveOrder({ "LH/22": 1, "RH/22": 1 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     await expect(confirmGift(GLOVE_ORDER, {}, deps(admin))).rejects.toMatchObject({
       status: 400,
       code: "selection_required",
     });
     await expect(
-      confirmGift(GLOVE_ORDER, { selection: { Size: "99" } }, deps(admin)),
+      confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin)),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "selection_required",
+    });
+    await expect(
+      confirmGift(GLOVE_ORDER, { selection: { Hand: "LH", Size: "99" } }, deps(admin)),
     ).rejects.toMatchObject({
       status: 400,
       code: "invalid_selection",
@@ -896,18 +920,22 @@ describe("confirmGift", () => {
   });
 
   it("is idempotent: a second confirm returns the added gift without another edit", async () => {
-    const admin = gloveOrder({ "22": [1, 1, 1] });
+    const admin = gloveOrder({ "LH/22": 1, "RH/22": 1 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
-    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    await confirmGift(GLOVE_ORDER, { selection: { Hand: "LH", Size: "22" } }, deps(admin));
     admin.calls.length = 0;
-    const again = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const again = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
     expect(again.result.gift).toMatchObject({ status: "added" });
     expect(admin.ops("orderEditBegin")).toHaveLength(0);
     expect(admin.lines.get(GLOVE_ORDER)).toHaveLength(1);
   });
 
   it("adopts a gift line that is already on the order (crash after commit) instead of adding another", async () => {
-    const admin = gloveOrder({ "22": [1, 1, 1] });
+    const admin = gloveOrder({ "LH/22": 1, "RH/22": 1 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     admin.lines.set(GLOVE_ORDER, [
       {
@@ -918,7 +946,11 @@ describe("confirmGift", () => {
         discounted: "0.0",
       },
     ]);
-    const done = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const done = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
     expect(done.result.gift).toMatchObject({ status: "added" });
     expect(admin.ops("orderEditBegin")).toHaveLength(0);
     const record = JSON.parse(admin.orders.get(GLOVE_ORDER)!.metafield!.value);
@@ -930,11 +962,11 @@ describe("confirmGift", () => {
   });
 
   it("leaves the record pending and the tag in place when the order edit fails, so a retry is safe", async () => {
-    const admin = gloveOrder({ "22": [1, 1, 1] });
+    const admin = gloveOrder({ "LH/22": 1, "RH/22": 1 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     admin.failEditAt = "orderEditCommit";
     await expect(
-      confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin)),
+      confirmGift(GLOVE_ORDER, { selection: { Hand: "LH", Size: "22" } }, deps(admin)),
     ).rejects.toMatchObject({
       status: 503,
       code: "gift_edit_failed",
@@ -944,7 +976,11 @@ describe("confirmGift", () => {
     expect(record.gift.status).toBe("pending");
     expect(admin.orders.get(GLOVE_ORDER)!.tags).toEqual([GIFT_TAGS.pending]);
     admin.failEditAt = null;
-    const retry = await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    const retry = await confirmGift(
+      GLOVE_ORDER,
+      { selection: { Hand: "LH", Size: "22" } },
+      deps(admin),
+    );
     expect(retry.result.gift?.status).toBe("added");
   });
 
@@ -963,16 +999,21 @@ describe("confirmGift", () => {
   });
 
   it("keeps the Thank you page link alive for a pending gift and drops it once added", async () => {
-    const admin = gloveOrder({ "22": [1, 1, 1] });
+    const admin = gloveOrder({ "LH/22": 1, "RH/22": 1 });
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
     clearOrderCache();
     const pending = await getSpinStatus(GLOVE_ORDER, deps(admin));
     expect(pending).toMatchObject({ alreadySpun: true, result: { gift: { status: "pending" } } });
     expect(typeof (pending as { spinUrl?: string }).spinUrl).toBe("string");
     const state = await getSpinState(GLOVE_ORDER, deps(admin));
-    expect((state as { giftOffer?: unknown }).giftOffer).toMatchObject({ customerOption: "Size" });
+    expect((state as { giftOffer?: unknown }).giftOffer).toMatchObject({
+      options: [
+        { name: "Hand", values: ["LH", "RH"] },
+        { name: "Size", values: ["22"] },
+      ],
+    });
 
-    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    await confirmGift(GLOVE_ORDER, { selection: { Hand: "LH", Size: "22" } }, deps(admin));
     clearOrderCache();
     const added = await getSpinStatus(GLOVE_ORDER, deps(admin));
     expect(added).toMatchObject({ alreadySpun: true, result: { gift: { status: "added" } } });
@@ -1028,9 +1069,12 @@ describe("logging: one order ID tells the whole story", () => {
   it("covers the gift path through confirmation and records why an ineligible order was refused", async () => {
     const admin = new FakeAdmin();
     admin.orders.set(GLOVE_ORDER, rawOrder(GLOVE_ORDER));
-    admin.products.set(GIFT_CATALOG.gift_gloves.productId, gloveVariants({ "22": [1, 4, 0] }));
+    admin.products.set(
+      GIFT_CATALOG.gift_gloves.productId,
+      gloveVariants({ "LH/22": 1, "RH/22": 4 }),
+    );
     await executeSpin(GLOVE_ORDER, {}, deps(admin));
-    await confirmGift(GLOVE_ORDER, { selection: { Size: "22" } }, deps(admin));
+    await confirmGift(GLOVE_ORDER, { selection: { Hand: "LH", Size: "22" } }, deps(admin));
     const events = story(GLOVE_ORDER);
     for (const expected of [
       "spin.eligibility",
@@ -1044,7 +1088,7 @@ describe("logging: one order ID tells the whole story", () => {
     }
     expect(logLines.find((l) => l.event === "gift.confirm.done")).toMatchObject({
       orderId: GLOVE_ORDER,
-      selection: { Size: "22" },
+      selection: { Hand: "LH", Size: "22" },
     });
 
     const cheap = "77777";

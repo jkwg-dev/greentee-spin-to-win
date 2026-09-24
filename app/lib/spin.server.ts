@@ -577,11 +577,12 @@ export async function confirmGift(
   }
 
   const { variants, imageUrl } = await loadGiftProduct(deps.admin, product, id);
-  const selection = product.customerOption ? (opts.selection ?? null) : null;
+  const selection = product.customerOptions.length > 0 ? (opts.selection ?? null) : null;
   const pick = pickVariant(product, variants, selection);
   if (!pick.ok) {
     if (pick.reason === "selection_required" || pick.reason === "invalid_selection") {
-      throw new SpinError(400, pick.reason, `Please choose a ${product.customerOption}.`);
+      const what = product.customerOptions.map((o) => o.toLowerCase()).join(" and ");
+      throw new SpinError(400, pick.reason, `Please choose your ${what}.`);
     }
     // Out of stock: do not edit the order, keep gift-pending, record why.
     l.warn("gift.confirm.unavailable", { selection, reason: pick.reason });

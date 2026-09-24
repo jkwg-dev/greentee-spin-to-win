@@ -15,17 +15,13 @@ function v(id: string, options: Record<string, string>, qty: number, afs = true)
 const GLOVES = GIFT_CATALOG.gift_gloves;
 const SOCKS = GIFT_CATALOG.gift_socks;
 
-/** LH gloves: sizes 18..25 x BLACK / CAMO1(BLUE) / CAMO2(ORANGE). */
-function gloves(stock: Record<string, [number, number, number]>): VariantStock[] {
-  const out: VariantStock[] = [];
+/** Aura gloves: Hand x Size, Colour White only. stock keyed "LH/22". */
+function gloves(stock: Record<string, number>): VariantStock[] {
   let n = 1;
-  for (const size of ["18", "19", "20", "21", "22", "23", "24", "25"]) {
-    const s = stock[size] ?? [0, 0, 0];
-    out.push(v(String(n++), { Hand: "LH", Color: "BLACK", Size: size }, s[0]));
-    out.push(v(String(n++), { Hand: "LH", Color: "CAMO1(BLUE)", Size: size }, s[1]));
-    out.push(v(String(n++), { Hand: "LH", Color: "CAMO2(ORANGE)", Size: size }, s[2]));
-  }
-  return out;
+  return Object.entries(stock).map(([k, qty]) => {
+    const [hand, size] = k.split("/");
+    return v(String(n++), { Hand: hand, Size: size, Colour: "White" }, qty);
+  });
 }
 
 describe("isAvailable", () => {
@@ -37,45 +33,33 @@ describe("isAvailable", () => {
   });
 });
 
-describe("buildOffer: gloves", () => {
-  it("lists sizes in numeric order, disables sizes with no colour in stock, preselects the deepest size", () => {
+describe("buildOffer: gloves (Hand and Size, White only)", () => {
+  it("lists both options, the in-stock combinations, and preselects the deepest combination", () => {
     const offer = buildOffer(
       GLOVES,
-      gloves({
-        "18": [0, 0, 0],
-        "19": [-3, 0, 0],
-        "22": [2, 5, 1],
-        "23": [9, 0, 0],
-        "25": [0, 1, 0],
-      }),
+      gloves({ "LH/18": 0, "RH/18": -3, "LH/22": 2, "RH/22": 9, "LH/23": 4, "RH/26": 1 }),
     );
-    expect(offer.customerOption).toBe("Size");
-    expect(offer.choices!.map((c) => c.value)).toEqual([
-      "18",
-      "19",
-      "20",
-      "21",
-      "22",
-      "23",
-      "24",
-      "25",
+    expect(offer.options).toEqual([
+      { name: "Hand", values: ["LH", "RH"] },
+      { name: "Size", values: ["18", "22", "23", "26"] },
     ]);
-    expect(offer.choices!.filter((c) => c.available).map((c) => c.value)).toEqual([
-      "22",
-      "23",
-      "25",
+    expect(offer.combinations.map((c) => [c.selection.Hand, c.selection.Size, c.stock])).toEqual([
+      ["LH", "22", 2],
+      ["RH", "22", 9],
+      ["LH", "23", 4],
+      ["RH", "26", 1],
     ]);
-    expect(offer.preselect).toBe("23"); // 9 > 8 > 1
+    // Never a fixed value: the deepest in-stock combination, whatever it is.
+    expect(offer.preselect).toEqual({ Hand: "RH", Size: "22" });
     expect(offer.anyAvailable).toBe(true);
-    expect(offer.note).toMatch(/Left hand \(LH\)/);
-    expect(offer.note).toMatch(/randomly selected/i);
+    expect(offer.note).not.toMatch(/left hand|random/i);
   });
 
-  it("ignores variants that are not left hand", () => {
-    const rh = v("99", { Hand: "RH", Color: "BLACK", Size: "22" }, 50);
-    const offer = buildOffer(GLOVES, [rh, ...gloves({})]);
-    expect(offer.anyAvailable).toBe(false);
+  it("is unavailable when nothing is in stock", () => {
+    const offer = buildOffer(GLOVES, gloves({ "LH/22": 0, "RH/22": -1 }));
+    expect(offer.combinations).toEqual([]);
     expect(offer.preselect).toBeNull();
+    expect(offer.anyAvailable).toBe(false);
   });
 });
 
@@ -87,8 +71,8 @@ describe("buildOffer: socks and brush", () => {
       v("3", { Colour: "Navy" }, 1),
     ];
     const offer = buildOffer(SOCKS, stock);
-    expect(offer.customerOption).toBeNull();
-    expect(offer.choices).toBeNull();
+    expect(offer.options).toEqual([]);
+    expect(offer.combinations).toEqual([]);
     expect(offer.anyAvailable).toBe(true);
     expect(
       buildOffer(
@@ -100,39 +84,39 @@ describe("buildOffer: socks and brush", () => {
 });
 
 describe("pickVariant", () => {
-  it("picks the colour with the most stock in the chosen size", () => {
-    const r = pickVariant(GLOVES, gloves({ "22": [2, 5, 1] }), { Size: "22" });
-    expect(r).toMatchObject({ ok: true, variant: { title: "LH / CAMO1(BLUE) / 22" } });
+  it("resolves the exact hand and size for gloves, with no colour logic", () => {
+    const r = pickVariant(GLOVES, gloves({ "LH/22": 2, "RH/22": 5 }), { Hand: "RH", Size: "22" });
+    expect(r).toMatchObject({ ok: true, variant: { title: "RH / 22 / White" } });
   });
 
-  it("never picks an oversold or unpublished colour even if its number is largest", () => {
-    const stock = gloves({ "22": [1, 0, 0] });
-    const oversold = stock.find((s) => s.title === "LH / CAMO2(ORANGE) / 22")!;
-    (oversold as { inventoryQuantity: number }).inventoryQuantity = -7;
-    const r = pickVariant(GLOVES, stock, { Size: "22" });
-    expect(r).toMatchObject({ ok: true, variant: { title: "LH / BLACK / 22" } });
-  });
-
-  it("reports no stock for a sold-out size, and never substitutes another size", () => {
-    expect(pickVariant(GLOVES, gloves({ "21": [3, 3, 3] }), { Size: "22" })).toEqual({
-      ok: false,
-      reason: "no_stock",
-    });
-  });
-
-  it("requires a size for gloves and rejects an unknown one", () => {
-    expect(pickVariant(GLOVES, gloves({ "22": [1, 1, 1] }), null)).toEqual({
+  it("requires every customer option and rejects unknown values", () => {
+    const stock = gloves({ "LH/22": 1, "RH/22": 1 });
+    expect(pickVariant(GLOVES, stock, null)).toEqual({ ok: false, reason: "selection_required" });
+    expect(pickVariant(GLOVES, stock, { Size: "22" })).toEqual({
       ok: false,
       reason: "selection_required",
     });
-    expect(pickVariant(GLOVES, gloves({ "22": [1, 1, 1] }), { Size: "40" })).toEqual({
+    expect(pickVariant(GLOVES, stock, { Hand: "LH", Size: "40" })).toEqual({
+      ok: false,
+      reason: "invalid_selection",
+    });
+    expect(pickVariant(GLOVES, stock, { Hand: "XX", Size: "22" })).toEqual({
       ok: false,
       reason: "invalid_selection",
     });
   });
 
-  it("matches the size case-insensitively and accepts a lower-cased key", () => {
-    expect(pickVariant(GLOVES, gloves({ "22": [1, 1, 1] }), { size: "22" })).toMatchObject({
+  it("reports no stock for a sold-out combination and never substitutes another", () => {
+    expect(
+      pickVariant(GLOVES, gloves({ "LH/21": 3, "RH/22": 3 }), { Hand: "LH", Size: "22" }),
+    ).toEqual({
+      ok: false,
+      reason: "no_stock",
+    });
+  });
+
+  it("matches values case-insensitively and accepts lower-cased keys", () => {
+    expect(pickVariant(GLOVES, gloves({ "LH/22": 1 }), { hand: "lh", size: "22" })).toMatchObject({
       ok: true,
     });
   });

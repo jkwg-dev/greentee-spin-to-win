@@ -562,45 +562,102 @@
     }
 
     var selection = null;
-    if (offer.customerOption && offer.choices) {
-      var current = offer.preselect;
-      var group = el("div", "gt-spin__choices");
-      group.setAttribute("role", "radiogroup");
-      group.setAttribute("aria-label", "Choose your " + offer.customerOption);
-      box.appendChild(
-        el("p", "gt-spin__choice-label", "Choose your " + offer.customerOption.toLowerCase()),
-      );
-      var chips = offer.choices.map(function (choice) {
-        var chip = el("button", "gt-spin__chip", choice.value);
-        chip.type = "button";
-        chip.setAttribute("role", "radio");
-        chip.setAttribute("data-value", choice.value);
-        if (!choice.available) {
-          chip.disabled = true;
-          chip.setAttribute("aria-disabled", "true");
-          chip.title = "Sold out";
-        }
-        chip.addEventListener("click", function () {
-          if (chip.disabled) return;
-          current = choice.value;
-          chips.forEach(function (c) {
-            c.setAttribute("aria-checked", c === chip ? "true" : "false");
-            c.classList.toggle("gt-spin__chip--selected", c === chip);
+    if (offer.options && offer.options.length && offer.combinations) {
+      // One step for every choice (e.g. Hand and Size side by side). A value is
+      // enabled only when an in-stock combination exists with it and the other
+      // current choices; the default is the deepest in-stock combination.
+      var options = offer.options;
+      var combos = offer.combinations;
+      var current = offer.preselect ? Object.assign({}, offer.preselect) : {};
+      var groups = [];
+
+      var comboMatches = function (c, sel) {
+        return options.every(function (o) {
+          return c.selection[o.name] === sel[o.name];
+        });
+      };
+      // A value is enabled when an in-stock combination has it together with
+      // the current values of the options listed BEFORE it. So Hand is enabled
+      // whenever any size is in stock for that hand, and Size is enabled
+      // relative to the chosen hand. Choosing an earlier option may invalidate
+      // a later one; the click handler then jumps to the deepest valid combo.
+      var available = function (name, value) {
+        var idx = options.findIndex(function (o) {
+          return o.name === name;
+        });
+        return combos.some(function (c) {
+          if (c.selection[name] !== value) return false;
+          return options.every(function (o, i) {
+            return i >= idx || c.selection[o.name] === current[o.name];
           });
         });
-        group.appendChild(chip);
-        return chip;
+      };
+      var deepestWith = function (name, value) {
+        var best = null;
+        combos.forEach(function (c) {
+          if (c.selection[name] === value && (!best || c.stock > best.stock)) best = c;
+        });
+        return best;
+      };
+      var refresh = function () {
+        groups.forEach(function (g) {
+          g.chips.forEach(function (ch) {
+            var ok = available(g.name, ch.value);
+            var on = current[g.name] === ch.value;
+            ch.el.disabled = !ok;
+            ch.el.setAttribute("aria-disabled", ok ? "false" : "true");
+            ch.el.title = ok ? "" : "Sold out";
+            ch.el.setAttribute("aria-checked", on ? "true" : "false");
+            ch.el.classList.toggle("gt-spin__chip--selected", on);
+          });
+        });
+      };
+
+      var row = el("div", "gt-spin__choice-row");
+      options.forEach(function (o) {
+        var wrap = el("div", "gt-spin__choice-group");
+        wrap.appendChild(el("p", "gt-spin__choice-label", o.name));
+        var group = el("div", "gt-spin__choices");
+        group.setAttribute("role", "radiogroup");
+        group.setAttribute("aria-label", "Choose your " + o.name.toLowerCase());
+        var chips = o.values.map(function (value) {
+          var chip = el("button", "gt-spin__chip", value);
+          chip.type = "button";
+          chip.setAttribute("role", "radio");
+          chip.setAttribute("data-option", o.name);
+          chip.setAttribute("data-value", value);
+          chip.addEventListener("click", function () {
+            if (chip.disabled) return;
+            current[o.name] = value;
+            // If the other choices no longer form an in-stock combination with
+            // this value, jump to the deepest one that does.
+            var valid = combos.some(function (c) {
+              return comboMatches(c, current);
+            });
+            if (!valid) {
+              var b = deepestWith(o.name, value);
+              if (b) current = Object.assign({}, b.selection);
+            }
+            refresh();
+          });
+          group.appendChild(chip);
+          return { el: chip, value: value };
+        });
+        wrap.appendChild(group);
+        row.appendChild(wrap);
+        groups.push({ name: o.name, chips: chips });
       });
-      chips.forEach(function (c) {
-        var on = c.getAttribute("data-value") === current;
-        c.setAttribute("aria-checked", on ? "true" : "false");
-        c.classList.toggle("gt-spin__chip--selected", on);
-      });
-      box.appendChild(group);
+      box.appendChild(row);
+      refresh();
+
       selection = function () {
         var out = {};
-        out[offer.customerOption] = current;
-        return current ? out : null;
+        var complete = true;
+        options.forEach(function (o) {
+          if (!current[o.name]) complete = false;
+          out[o.name] = current[o.name];
+        });
+        return complete ? out : null;
       };
     }
 

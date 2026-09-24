@@ -361,21 +361,24 @@ const GIFT_RESULT = {
 
 const GLOVE_OFFER = {
   rewardKey: "gift_gloves",
-  productTitle: "GFJ Classic Glove (Unisex)",
-  note: "Left hand (LH). Colour is randomly selected.",
-  customerOption: "Size",
-  choices: [
-    { value: "21", available: false, stock: 0 },
-    { value: "22", available: true, stock: 8 },
-    { value: "23", available: true, stock: 9 },
+  productTitle: "GFJ Aura Control Glove (Unisex)",
+  note: "Choose your hand and size.",
+  options: [
+    { name: "Hand", values: ["LH", "RH"] },
+    { name: "Size", values: ["21", "22", "23"] },
   ],
-  preselect: "23",
+  combinations: [
+    { selection: { Hand: "LH", Size: "22" }, stock: 8 },
+    { selection: { Hand: "LH", Size: "23" }, stock: 9 },
+    { selection: { Hand: "RH", Size: "22" }, stock: 3 },
+  ],
+  preselect: { Hand: "LH", Size: "23" },
   anyAvailable: true,
   imageUrl: "https://cdn.example/glove.jpg",
 };
 
 describe("spin page: gifts", () => {
-  it("shows the size step for a pending glove, disables sold-out sizes, and confirms the chosen size", async () => {
+  it("shows hand and size in one step, disables sold-out combinations, and confirms both", async () => {
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: {
@@ -390,7 +393,7 @@ describe("spin page: gifts", () => {
             ...GIFT_RESULT,
             gift: {
               status: "added",
-              variantTitle: `LH / BLACK / ${(body.selection as { Size: string }).Size}`,
+              variantTitle: `${(body.selection as { Hand: string }).Hand} / ${(body.selection as { Size: string }).Size} / White`,
               selection: body.selection,
             },
           },
@@ -400,30 +403,43 @@ describe("spin page: gifts", () => {
     });
     const box = p.el("[data-result]");
     expect(box.hidden).toBe(false);
-    expect(box.textContent).toContain("Left hand (LH). Colour is randomly selected.");
-    // The card leads with the gift: image, name, chips, one primary button; back link is quiet.
+    expect(box.textContent).toContain("Choose your hand and size.");
+    expect(box.textContent).not.toMatch(/left hand|randomly/i);
+    // The card leads with the gift: image, name, both chip groups, one primary button; back link quiet.
     expect(box.querySelector("img.gt-spin__gift-image")?.getAttribute("src")).toBe(
       "https://cdn.example/glove.jpg",
     );
     const at = (cls: string) => [...box.children].findIndex((c) => c.classList.contains(cls));
     expect(at("gt-spin__gift-image")).toBeLessThan(at("gt-spin__result-heading"));
-    expect(at("gt-spin__choices")).toBeLessThan(at("gt-spin__gift-confirm"));
+    expect(at("gt-spin__choice-row")).toBeLessThan(at("gt-spin__gift-confirm"));
     expect(box.querySelectorAll(".gt-spin__button")).toHaveLength(1);
     expect(box.querySelector("a.gt-spin__back")?.className).toContain("gt-spin__back--quiet");
-    const chips = [...box.querySelectorAll<HTMLButtonElement>(".gt-spin__chip")];
-    expect(chips.map((c) => c.textContent)).toEqual(["21", "22", "23"]);
-    expect(chips[0].disabled).toBe(true);
-    expect(chips[2].getAttribute("aria-checked")).toBe("true");
 
-    chips[1].click();
-    expect(chips[1].getAttribute("aria-checked")).toBe("true");
+    const chip = (option: string, value: string) =>
+      box.querySelector<HTMLButtonElement>(
+        `.gt-spin__chip[data-option="${option}"][data-value="${value}"]`,
+      )!;
+    // Single step: both groups rendered side by side.
+    expect(box.querySelectorAll(".gt-spin__choice-group")).toHaveLength(2);
+    // Preselected: the deepest in-stock combination, LH / 23.
+    expect(chip("Hand", "LH").getAttribute("aria-checked")).toBe("true");
+    expect(chip("Size", "23").getAttribute("aria-checked")).toBe("true");
+    // Availability is per combination: with LH selected, 21 has no stock, 22 and 23 do.
+    expect(chip("Size", "21").disabled).toBe(true);
+    expect(chip("Size", "22").disabled).toBe(false);
+    expect(chip("Size", "23").disabled).toBe(false);
+
+    // Switching hand keeps the selection valid: RH only exists in 22, so size jumps to 22.
+    chip("Hand", "RH").click();
+    expect(chip("Hand", "RH").getAttribute("aria-checked")).toBe("true");
+    expect(chip("Size", "22").getAttribute("aria-checked")).toBe("true");
+    expect(chip("Size", "23").disabled).toBe(true);
+
     box.querySelector<HTMLButtonElement>(".gt-spin__gift-confirm")!.click();
     await flush();
-
-    expect(p.giftBodies).toEqual([{ token: "ok", selection: { Size: "22" } }]);
-    expect(box.textContent).toContain("Added to your order: GFJ Gloves (LH / BLACK / 22).");
+    expect(p.giftBodies).toEqual([{ token: "ok", selection: { Hand: "RH", Size: "22" } }]);
+    expect(box.textContent).toContain("Added to your order: GFJ Gloves (RH / 22 / White).");
     expect(box.querySelector(".gt-spin__gift-confirm")).toBeNull();
-    // Once added, the back action becomes the visible button again.
     expect(box.querySelector("a.gt-spin__back")?.className).toContain("gt-spin__button");
     expect(box.querySelector("a.gt-spin__back")?.className).not.toContain("quiet");
   });
@@ -433,8 +449,8 @@ describe("spin page: gifts", () => {
     const offer = {
       ...GLOVE_OFFER,
       rewardKey: "gift_socks",
-      customerOption: null,
-      choices: null,
+      options: [],
+      combinations: [],
       preselect: null,
       note: "Colour is randomly selected.",
     };
@@ -535,7 +551,7 @@ describe("spin page: gifts", () => {
     });
     p.el("[data-spin]").click();
     await flush();
-    expect(p.el("[data-result]").querySelectorAll(".gt-spin__chip")).toHaveLength(3);
+    expect(p.el("[data-result]").querySelectorAll(".gt-spin__chip")).toHaveLength(5); // 2 hands + 3 sizes
   });
 });
 

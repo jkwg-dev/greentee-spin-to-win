@@ -265,10 +265,14 @@ export interface GiftProduct {
   readonly title: string;
   /** Options fixed on every variant; never shown as a choice. Matched case-insensitively. */
   readonly fixedOptions: Readonly<Record<string, string>>;
-  /** The one option the customer chooses, or null when there is nothing to choose. */
-  readonly customerOption: string | null;
-  /** The option the app picks by stock (the colour). */
-  readonly pickedOption: string;
+  /**
+   * Options the customer chooses, in display order. Empty when there is
+   * nothing to choose. All of them are picked in one step; availability is
+   * per combination, not per value.
+   */
+  readonly customerOptions: readonly string[];
+  /** An option the app resolves by stock (the colour), or null when the product has none to pick. */
+  readonly pickedOption: string | null;
   /** Copy shown with the gift. Must state anything the customer does not get to choose. */
   readonly note: string;
 }
@@ -280,13 +284,14 @@ export interface GiftProduct {
 export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
   gift_gloves: {
     rewardKey: "gift_gloves",
-    productId: "gid://shopify/Product/8056074502334",
-    title: "GFJ Classic Glove (Unisex)",
-    // 24 variants: Hand x Color x Size. Hand is LH on every variant.
-    fixedOptions: { Hand: "LH" },
-    customerOption: "Size",
-    pickedOption: "Color",
-    note: "Left hand (LH). Colour is randomly selected.",
+    productId: "gid://shopify/Product/8799392006334",
+    title: "GFJ Aura Control Glove (Unisex)",
+    // 18 variants: Hand (LH, RH) x Size (18 to 26). Colour is White only, so
+    // there is nothing to auto-select: no colour logic for gloves.
+    fixedOptions: {},
+    customerOptions: ["Hand", "Size"],
+    pickedOption: null,
+    note: "Choose your hand and size.",
   },
   gift_socks: {
     rewardKey: "gift_socks",
@@ -294,7 +299,7 @@ export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
     productId: "gid://shopify/Product/7884953583806",
     title: "GFJ Jacquard Ankle High Socks",
     fixedOptions: {},
-    customerOption: null,
+    customerOptions: [],
     pickedOption: "Colour",
     note: "Colour is randomly selected.",
   },
@@ -303,7 +308,7 @@ export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
     productId: "gid://shopify/Product/8495558852798",
     title: "GFJ x GreenTee Golf Club Cleaning Brush",
     fixedOptions: {},
-    customerOption: null,
+    customerOptions: [],
     pickedOption: "Colour",
     note: "Colour is randomly selected.",
   },

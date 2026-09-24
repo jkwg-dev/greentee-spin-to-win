@@ -9,7 +9,7 @@ order (300 CAD subtotal or more), taken on the Thank you page right after checko
   prefix; letters and digits only, never O, 0, I or 1) for 10% off clubs, 15% off
   accessories or 30% off apparel, regular priced collections only. It expires with the campaign.
   The code is shown on screen and on the customer's order status page. We do not email it.
-- **Gift** (25% of spins): GFJ gloves (left hand, customer picks the size, we pick the colour),
+- **Gift** (25% of spins): GFJ Aura Control gloves (customer picks hand and size; white only),
   GFJ socks or a GFJ club brush (we pick the colour). The gift is added to the same order as a
   new line at 100% off, so it ships with the order. Nothing is shipped separately.
 
@@ -39,9 +39,9 @@ failed (for example `no_stock for {"Size":"22"}`).
 1. Check `gift.status` in the metafield.
    - `pending`: the customer never confirmed. They can still finish from their Thank you page
      link while the campaign runs. If the order is about to ship, reach out and ask for their
-     glove size (socks and brush need nothing), then add the item by hand.
+     glove hand and size (socks and brush need nothing), then add the item by hand.
    - `unavailable`: the size or product was out of stock when they confirmed. Offer the same
-     item in another colour or size if stock allows, or agree an alternative with the customer.
+     item in another size (or colour, for socks and brush) if stock allows, or agree an alternative with the customer.
      Do not swap to a different product without asking.
 2. Add the gift by editing the order: add the variant, apply a 100% discount to that line,
    uncheck "send notification" if you prefer, and save.

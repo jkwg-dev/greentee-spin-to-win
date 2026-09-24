@@ -365,6 +365,18 @@ html.gt-spin-open body {
   opacity: 0.8;
 }
 
+.gt-spin__choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.gt-spin__choice-group {
+  min-width: 7rem;
+}
+
 .gt-spin__choices {
   display: flex;
   flex-wrap: wrap;

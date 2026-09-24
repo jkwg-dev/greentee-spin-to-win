@@ -63,7 +63,7 @@ link again (or the order status page) so the app re-reads it.
 - [ ] Spin lands, code is shown; refresh the spin page shows the same result; Thank you page
       and Order status page both show the code.
 - [ ] Code applies at checkout only to the matching regular priced collection, once.
-- [ ] `?force=2` on the spin page as a tester lands on gloves: size chips, confirm, the order
+- [ ] `?force=2` on the spin page as a tester lands on gloves: hand and size chips, confirm, the order
       gains a $0 glove line and the tag flips to `gift-added`. Repeat with `?force=5` (socks)
       and `?force=4` (brush).
 - [ ] A non-test customer with `?force=` gets a plain error and can still spin normally.

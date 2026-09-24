@@ -28,10 +28,16 @@ export interface VariantStock {
   readonly options: Readonly<Record<string, string>>;
 }
 
-export interface GiftChoice {
-  readonly value: string;
-  readonly available: boolean;
-  /** Total stock across colours for this value. */
+export interface GiftOption {
+  readonly name: string;
+  /** Every value the product has for this option, in display order. */
+  readonly values: readonly string[];
+}
+
+export interface GiftCombination {
+  /** One value per customer option, e.g. { Hand: "LH", Size: "22" }. */
+  readonly selection: Readonly<Record<string, string>>;
+  /** Total available stock behind this combination. */
   readonly stock: number;
 }
 
@@ -42,11 +48,16 @@ export interface GiftOffer {
   /** Product image from Shopify, or null. */
   readonly imageUrl: string | null;
   readonly note: string;
-  /** Option the customer picks, e.g. "Size", or null when nothing to choose. */
-  readonly customerOption: string | null;
-  readonly choices: readonly GiftChoice[] | null;
-  /** An in-stock choice to preselect (the one with most stock), or null. */
-  readonly preselect: string | null;
+  /** Options the customer chooses, in display order. Empty when nothing to choose. */
+  readonly options: readonly GiftOption[];
+  /**
+   * Combinations backed by an in-stock variant. The page enables a value only
+   * when a combination exists with it and the other current choices, so out of
+   * stock combinations are disabled rather than whole values.
+   */
+  readonly combinations: readonly GiftCombination[];
+  /** The available combination with most stock, or null. Never a fixed value. */
+  readonly preselect: Readonly<Record<string, string>> | null;
   readonly anyAvailable: boolean;
 }
 
@@ -79,59 +90,68 @@ export function matchesOptions(v: VariantStock, wanted: Readonly<Record<string, 
   );
 }
 
-function compareChoice(a: string, b: string): number {
+function compareValue(a: string, b: string): number {
   const na = Number(a);
   const nb = Number(b);
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
   return a.localeCompare(b);
 }
 
-/** Builds the customer-facing offer: which values can be chosen and which are sold out. */
+/** Builds the customer-facing offer: the options, which combinations are in stock, and a default. */
 export function buildOffer(
   product: GiftProduct,
   variants: readonly VariantStock[],
   imageUrl: string | null = null,
 ): GiftOffer {
   const fixed = variants.filter((v) => matchesOptions(v, product.fixedOptions));
-  if (!product.customerOption) {
-    const anyAvailable = fixed.some(isAvailable);
-    return {
-      rewardKey: product.rewardKey,
-      productTitle: product.title,
-      imageUrl,
-      note: product.note,
-      customerOption: null,
-      choices: null,
-      preselect: null,
-      anyAvailable,
-    };
-  }
-  const optionKey = key(product.customerOption);
-  const byValue = new Map<string, { stock: number; available: boolean }>();
-  for (const v of fixed) {
-    const value = v.options[optionKey];
-    if (value === undefined) continue;
-    const entry = byValue.get(value) ?? { stock: 0, available: false };
-    if (isAvailable(v)) {
-      entry.stock += v.inventoryQuantity;
-      entry.available = true;
-    }
-    byValue.set(value, entry);
-  }
-  const choices: GiftChoice[] = [...byValue.entries()]
-    .map(([value, e]) => ({ value, available: e.available, stock: e.stock }))
-    .sort((a, b) => compareChoice(a.value, b.value));
-  const preselect =
-    choices.filter((c) => c.available).sort((a, b) => b.stock - a.stock)[0]?.value ?? null;
-  return {
+  const base = {
     rewardKey: product.rewardKey,
     productTitle: product.title,
     imageUrl,
     note: product.note,
-    customerOption: product.customerOption,
-    choices,
-    preselect,
-    anyAvailable: preselect !== null,
+  };
+  if (product.customerOptions.length === 0) {
+    return {
+      ...base,
+      options: [],
+      combinations: [],
+      preselect: null,
+      anyAvailable: fixed.some(isAvailable),
+    };
+  }
+  const names = product.customerOptions;
+  const valueSets = names.map(() => new Set<string>());
+  const combos = new Map<string, { selection: Record<string, string>; stock: number }>();
+  for (const v of fixed) {
+    const selection: Record<string, string> = {};
+    let complete = true;
+    names.forEach((name, i) => {
+      const value = v.options[key(name)];
+      if (value === undefined) complete = false;
+      else {
+        selection[name] = value;
+        valueSets[i].add(value);
+      }
+    });
+    if (!complete || !isAvailable(v)) continue;
+    const id = names.map((n) => selection[n]).join("\u0000");
+    const entry = combos.get(id) ?? { selection, stock: 0 };
+    entry.stock += v.inventoryQuantity;
+    combos.set(id, entry);
+  }
+  const options: GiftOption[] = names.map((name, i) => ({
+    name,
+    values: [...valueSets[i]].sort(compareValue),
+  }));
+  const combinations: GiftCombination[] = [...combos.values()];
+  let preselect: GiftCombination | null = null;
+  for (const c of combinations) if (!preselect || c.stock > preselect.stock) preselect = c;
+  return {
+    ...base,
+    options,
+    combinations,
+    preselect: preselect ? preselect.selection : null,
+    anyAvailable: combinations.length > 0,
   };
 }
 
@@ -140,8 +160,9 @@ export type PickResult =
   | { ok: false; reason: "no_stock" | "invalid_selection" | "selection_required" };
 
 /**
- * Resolves the variant to add: the fixed options, the customer's selection,
- * then the available variant with the most stock (ties: first in catalogue order).
+ * Resolves the variant to add: the fixed options, every customer option from
+ * the selection, then the available variant with the most stock (which is how
+ * a picked option such as colour resolves; ties go to catalogue order).
  */
 export function pickVariant(
   product: GiftProduct,
@@ -149,16 +170,14 @@ export function pickVariant(
   selection: Readonly<Record<string, string>> | null,
 ): PickResult {
   const wanted: Record<string, string> = { ...product.fixedOptions };
-  if (product.customerOption) {
-    const chosen = selection?.[product.customerOption] ?? selection?.[key(product.customerOption)];
+  for (const name of product.customerOptions) {
+    const chosen = selection?.[name] ?? selection?.[key(name)];
     if (!chosen) return { ok: false, reason: "selection_required" };
     const known = variants.some(
-      (v) =>
-        (v.options[key(product.customerOption!)] ?? "").toLowerCase() ===
-        chosen.trim().toLowerCase(),
+      (v) => (v.options[key(name)] ?? "").toLowerCase() === chosen.trim().toLowerCase(),
     );
     if (!known) return { ok: false, reason: "invalid_selection" };
-    wanted[product.customerOption] = chosen;
+    wanted[name] = chosen;
   }
   const candidates = variants.filter((v) => matchesOptions(v, wanted) && isAvailable(v));
   if (candidates.length === 0) return { ok: false, reason: "no_stock" };

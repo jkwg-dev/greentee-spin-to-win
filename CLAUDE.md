@@ -105,20 +105,23 @@ else. The socks product is provisional and may change.
 
 | Reward        | Product                                   | Options                                   | Customer chooses |
 |---------------|-------------------------------------------|-------------------------------------------|------------------|
-| `gift_gloves` | GFJ Classic Glove (Unisex), 24 variants   | Hand (always LH), Color, Size 18 to 25     | Size             |
+| `gift_gloves` | GFJ Aura Control Glove (Unisex), 18 variants | Hand (LH, RH), Size 18 to 26, Colour White only | Hand and Size |
 | `gift_socks`  | GFJ Jacquard Ankle High Socks, 3 variants | Colour: Black, Beige, Navy                 | nothing          |
 | `gift_brush`  | GFJ x GreenTee Club Cleaning Brush, 4     | Colour: White, Black, Green, Orange        | nothing          |
 
-The app picks the colour with the most stock (in the chosen size for gloves). Hand is fixed at LH
-and never shown as a choice. Customer copy for the glove must say it is left hand (LH) and that
-the colour is randomly selected.
+For socks and the brush the app picks the colour with the most stock and the copy says so. The
+glove has no colour logic at all: it comes in White only, and the customer picks both Hand and
+Size in a single step. Glove copy must not say left hand only or that the colour is random,
+since neither is true of this product.
 
 #### Flow
 
 1. On a gift result, `executeSpin` writes the spin metafield with `gift.status = "pending"` and
    tags the order `gift-pending` before anything else. Nothing is added to the order yet.
-2. The spin page shows the gift step. Glove only: a size selector with an in-stock size
-   preselected (the one with most stock) and sold-out sizes disabled. Socks and brush: just the
+2. The spin page shows the gift step. Glove only: Hand and Size chips side by side in one step,
+   never two screens. Availability is per combination: a value is enabled only when an in-stock
+   variant exists with it and the other current choice, and the preselected default is the
+   in-stock combination with the most stock, never a fixed value. Socks and brush: just the
    confirm button.
 3. `POST /apps/spin/gift` (`confirmGift`) resolves the variant, then `orderEditBegin`,
    `orderEditAddVariant`, `orderEditAddLineItemDiscount` (100%), `orderEditCommit` with
@@ -136,7 +139,7 @@ finish. The order status page shows the pending state as text only.
 - If every variant of the won gift is unavailable, do not edit the order. Show a message asking
   the customer to contact us, leave the tag at `gift-pending`, and record the reason in the
   metafield (`gift.status = "unavailable"`). A later confirm may succeed if stock returns.
-- Never substitute a different gift product or size. Staff handle those cases manually.
+- Never substitute a different gift product, hand or size. Staff handle those cases manually.
 
 #### Idempotency
 
