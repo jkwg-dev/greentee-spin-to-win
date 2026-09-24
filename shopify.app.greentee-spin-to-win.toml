@@ -9,14 +9,12 @@
 client_id = "08e43076c245f84ff0249ba721305eec"
 name = "greentee-spin-to-win"
 handle = "greentee-spin-to-win"
-application_url = "https://REPLACE.vercel.app"
+application_url = "https://greentee-spin-to-win.vercel.app"
 # No admin UI. The app serves API endpoints, an app proxy and extensions only.
 embedded = false
 
 [build]
 automatically_update_urls_on_dev = true
-# Push this file's contents on deploy rather than only the extensions.
-include_config_on_deploy = true
 
 [access_scopes]
 # write_orders: order lookup, the greentee_spin.result order metafield (metafieldsSet needs
@@ -28,13 +26,13 @@ scopes = "write_orders,write_discounts,write_order_edits,read_products"
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = ["https://REPLACE.vercel.app/auth/callback"]
+redirect_urls = ["https://greentee-spin-to-win.vercel.app/auth/callback"]
 
 # Required. Without this block the storefront spin page cannot reach the app and the whole
 # spin flow fails; the CLI does not add it for you.
 [app_proxy]
 # Storefront https://{shop}/apps/spin/* -> {application_url}/apps/spin/*
-url = "https://REPLACE.vercel.app/apps/spin"
+url = "https://greentee-spin-to-win.vercel.app/apps/spin"
 prefix = "apps"
 subpath = "spin"
 
