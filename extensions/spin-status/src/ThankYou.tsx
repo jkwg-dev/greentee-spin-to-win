@@ -9,17 +9,13 @@
  */
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
-import { SLICES } from "../../../app/config/campaign";
 import { SpinResult, TestBadge } from "./shared/SpinResult";
 import { appUrlFromSettings, imageUrlFromSettings, useSpinStatus } from "./shared/useSpinStatus";
 
 declare const shopify: import("@shopify/ui-extensions/purchase.thank-you.block.render").Api;
 
-/** The best discount on the wheel, from the reward table, so the copy cannot drift from it. */
-const MAX_DISCOUNT = Math.max(...SLICES.map((s) => s.discount?.percentage ?? 0));
-
-/** One line, reward first. It replaces a heading plus a supporting line that said the same thing. */
-const ELIGIBLE_LINE = `You've unlocked a spin. Win up to ${MAX_DISCOUNT}% off or a free GFJ gift.`;
+/** Short, names the reward, not the mechanic. */
+const ELIGIBLE_HEADING = "You've unlocked a spin";
 
 export default function extension() {
   render(<Extension />, document.body);
@@ -61,10 +57,19 @@ function Extension() {
         </s-banner>
       );
 
-    case "eligible":
-      // A plain box rather than a banner: a banner draws its own status icon,
-      // which sat alone above the wheel. Everything shares the wheel's centre
-      // axis, and the line and button are one tight group beneath it.
+    case "eligible": {
+      // Three things, top to bottom: bold heading, the wheel, the button.
+      // Everything centred on the wheel's axis; nothing under the button.
+      const image = wheelImage ? (
+        <s-image
+          src={wheelImage}
+          alt=""
+          inlineSize="fill"
+          aspectRatio="1"
+          objectFit="contain"
+          loading="eager"
+        />
+      ) : null;
       return (
         <s-box padding="base" border="base" borderRadius="base" background="subdued">
           <s-stack direction="block" gap="base" alignItems="center">
@@ -73,33 +78,32 @@ function Extension() {
                 Test spin
               </s-badge>
             ) : null}
-            {wheelImage ? (
-              <s-image
-                src={wheelImage}
-                alt=""
-                inlineSize="fill"
-                aspectRatio="1"
-                objectFit="contain"
-                loading="eager"
-              />
-            ) : null}
-            <s-stack direction="block" gap="small-200" alignItems="center">
-              <s-paragraph textAlign="center">
-                <s-text type="strong">{ELIGIBLE_LINE}</s-text>
+            <s-heading>{ELIGIBLE_HEADING}</s-heading>
+            {image && state.spinUrl ? (
+              // Tapping the wheel does what the button does.
+              <s-clickable
+                href={state.spinUrl}
+                inlineSize="100%"
+                accessibilityLabel="Spin the wheel"
+              >
+                {image}
+              </s-clickable>
+            ) : (
+              image
+            )}
+            {state.spinUrl ? (
+              <s-button variant="primary" href={state.spinUrl}>
+                Spin the wheel
+              </s-button>
+            ) : (
+              <s-paragraph color="subdued" textAlign="center">
+                Your spin link is being prepared. Refresh in a moment.
               </s-paragraph>
-              {state.spinUrl ? (
-                <s-button variant="primary" href={state.spinUrl}>
-                  Spin the wheel
-                </s-button>
-              ) : (
-                <s-paragraph color="subdued" textAlign="center">
-                  Your spin link is being prepared. Refresh in a moment.
-                </s-paragraph>
-              )}
-            </s-stack>
+            )}
           </s-stack>
         </s-box>
       );
+    }
 
     case "spun":
       return (
