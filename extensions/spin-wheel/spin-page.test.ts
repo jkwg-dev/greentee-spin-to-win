@@ -580,6 +580,16 @@ describe("spin page: colour, chips, odds and overlay", () => {
     tags.forEach((t, i) => expect(dist(t)).toBeGreaterThan(dist(labels[i])));
   });
 
+  it("tilts each badge along its arc, turning with the wheel, no flipping", async () => {
+    await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
+    const tags = [...document.querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
+    // Slice centres on a nine-slice wheel are 20°, 60°, 100°, ... in the wheel's frame.
+    tags.forEach((t, i) => expect(t.style.transform).toContain(`rotate(${i * 40 + 20}deg)`));
+    // Labels stay upright regardless (the wheel rests at -20°).
+    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    labels.forEach((l) => expect(l.style.transform).toContain("rotate(20deg)"));
+  });
+
   it("shows the reward-type chip on the result card", async () => {
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",

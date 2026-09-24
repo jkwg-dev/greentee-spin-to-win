@@ -137,6 +137,7 @@
   var wheelReady = false;
   var labelEls = [];
   var tagEls = [];
+  var tagCentres = []; // wheel angle (deg, 0 = top, clockwise) of each badge
   var busy = false;
   var revealTimer = null;
   var lastAction = null; // "load" | "spin", for the retry button
@@ -307,6 +308,7 @@
     var layer = els.labels;
     while (layer.firstChild) layer.removeChild(layer.firstChild);
     tagEls = [];
+    tagCentres = [];
     labelEls = slices.map(function (s, i) {
       var p = palette[i];
       var centre = i * sliceDeg + sliceDeg / 2; // wheel angle, 0 = top, clockwise
@@ -335,6 +337,7 @@
       tag.style.color = p.text;
       layer.appendChild(tag);
       tagEls.push(tag);
+      tagCentres.push(centre);
       return label;
     });
   }
@@ -349,7 +352,12 @@
     els.labels.style.transform = "rotate(" + r + "deg)";
     var counter = "translate(-50%, -50%) rotate(" + -r + "deg)";
     for (var i = 0; i < labelEls.length; i++) labelEls[i].style.transform = counter;
-    for (var j = 0; j < tagEls.length; j++) tagEls[j].style.transform = counter;
+    // Badges are printed on the wheel: tangent to the rim at their slice's
+    // centre, turning with it. Ones in the lower half read upside down, as
+    // on a physical wheel; that is intended.
+    for (var j = 0; j < tagEls.length; j++) {
+      tagEls[j].style.transform = "translate(-50%, -50%) rotate(" + tagCentres[j] + "deg)";
+    }
   }
 
   function tick() {
