@@ -1,3 +1,4 @@
+import { REWARD_TYPE_LABELS } from "../../../../app/config/campaign";
 import type { PublicSpinResult } from "./api";
 import { formatExpiry } from "./format";
 
@@ -33,6 +34,7 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
       return (
         <s-banner tone="success" heading={heading}>
           <s-stack direction="block" gap="small">
+            <RewardTypeBadge type={result.rewardType} />
             <s-paragraph>
               Added to this order at no charge: {what}. It ships with the rest of your items.
             </s-paragraph>
@@ -45,6 +47,7 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
       return (
         <s-banner tone="warning" heading={heading}>
           <s-stack direction="block" gap="small">
+            <RewardTypeBadge type={result.rewardType} />
             <s-paragraph>
               That gift was out of stock when you tried to add it. Contact us and we'll sort it out.
             </s-paragraph>
@@ -58,6 +61,7 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
       return (
         <s-banner tone="success" heading={heading}>
           <s-stack direction="block" gap="base">
+            <RewardTypeBadge type={result.rewardType} />
             <s-paragraph>
               Your gift is waiting. Confirm it and we'll add it to this order at no charge.
             </s-paragraph>
@@ -72,6 +76,7 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
     return (
       <s-banner tone="info" heading={heading}>
         <s-stack direction="block" gap="small">
+          <RewardTypeBadge type={result.rewardType} />
           <s-paragraph>
             Your gift hasn't been added to this order yet. Contact us and we'll sort it out.
           </s-paragraph>
@@ -99,6 +104,7 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
   return (
     <s-banner tone="success" heading={heading}>
       <s-stack direction="block" gap="base">
+        <RewardTypeBadge type={result.rewardType} />
         <s-paragraph>
           Use this code on your next GreenTee order. One use, and it's yours only.
         </s-paragraph>
@@ -118,6 +124,11 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
       </s-stack>
     </s-banner>
   );
+}
+
+/** "Discount" / "Free gift", matching the chip on the spin page's result card. */
+export function RewardTypeBadge({ type }: { readonly type: PublicSpinResult["rewardType"] }) {
+  return <s-badge tone="neutral">{REWARD_TYPE_LABELS[type]}</s-badge>;
 }
 
 export function TestBadge() {
