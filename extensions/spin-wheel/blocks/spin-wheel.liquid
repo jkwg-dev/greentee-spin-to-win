@@ -45,7 +45,12 @@
     <p class="gt-spin__status" data-status role="status" aria-live="polite">Checking your order…</p>
 
     <div class="gt-spin__stage" data-stage hidden>
-      <div class="gt-spin__pointer" aria-hidden="true"></div>
+      <div class="gt-spin__pointer" aria-hidden="true">
+        {%- comment -%} SVG so the pointer can carry a white stroke and stay visible on a same-coloured slice. {%- endcomment -%}
+        <svg viewBox="0 0 40 46" focusable="false">
+          <path d="M3 3h34L20 43z" fill="currentColor" stroke="#fff" stroke-width="3" stroke-linejoin="round" />
+        </svg>
+      </div>
       <div class="gt-spin__rim" aria-hidden="true"></div>
       <div class="gt-spin__wheel" data-wheel role="img" aria-label="Prize wheel"></div>
       <div class="gt-spin__labels" data-labels aria-hidden="true"></div>
