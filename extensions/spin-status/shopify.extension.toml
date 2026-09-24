@@ -1,6 +1,7 @@
 api_version = "2026-07"
 
 [[extensions]]
+uid = "9918ff52-6ed3-555a-1cc6-4cd4e867682529c71b33"
 type = "ui_extension"
 name = "GreenTee Spin to Win"
 handle = "spin-status"
