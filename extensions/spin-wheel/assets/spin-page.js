@@ -96,6 +96,37 @@
       '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 3M16 6h3a3 3 0 0 1-3 3"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 16h4v4h-4z"/>',
   };
 
+  /**
+   * Where the primary button sends a discount winner. Shopify's /discount/CODE
+   * URL applies the code to the cart, then redirects to `path`. Collection
+   * handles live here so they can be changed in one place.
+   */
+  var SHOP_ORIGIN = "https://shop.greenteegolfshop.com";
+  var REWARD_LINKS = {
+    clubs_10: { category: "clubs", path: "/collections/clubs" },
+    accessories_15: { category: "accessories", path: "/collections/accessories" },
+    apparel_30: { category: "apparel", path: "/collections/apparel" },
+  };
+  var FALLBACK_LINK = { category: "now", path: "/" };
+
+  function discountLink(result) {
+    var link = REWARD_LINKS[result.rewardKey] || FALLBACK_LINK;
+    return {
+      href:
+        SHOP_ORIGIN +
+        "/discount/" +
+        encodeURIComponent(result.code || "") +
+        "?redirect=" +
+        encodeURIComponent(link.path),
+      label: "Shop " + link.category + " with code applied",
+    };
+  }
+
+  var ICON_COPY =
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  var ICON_CHECK =
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   var COPY = {
     checking: "Checking your order…",
     pending: "Just a moment while we find your order…",
@@ -108,8 +139,7 @@
     spinFailed: "We couldn't complete your spin. Nothing was lost. Press Try again.",
     stillPending: "Your order is still being confirmed. Please try again in a moment.",
     forceDenied: "That option isn't available. Press Try again to spin.",
-    keepSafe:
-      "Keep this code somewhere safe. You can also find it later through the link in your order confirmation email.",
+    keepSafe: "Also saved in your confirmation email.",
     giftIntro: "It's on us. Added to this order at no charge.",
     giftConfirm: "Add to my order",
     giftAdding: "Adding to your order…",
@@ -182,6 +212,22 @@
       }).format(d);
     } catch (e) {
       return d.toLocaleString();
+    }
+  }
+
+  /** "Nov 2, 2026", in the campaign's zone. */
+  function formatExpiryShort(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Vancouver",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(d);
+    } catch (e) {
+      return d.toLocaleDateString();
     }
   }
 
@@ -452,56 +498,38 @@
     while (box.firstChild) box.removeChild(box.firstChild);
     box.classList.toggle("gt-spin__result--expired", !!result.expired);
 
-    var expiry = formatExpiry(result.expiresAt);
-
     if (result.rewardType === "gift") {
       renderGift(box, result, extras.offer || null, extras.message || null);
     } else if (result.expired) {
       box.appendChild(el("h2", "gt-spin__result-heading", "Your Spin to Win code has expired"));
-      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.discount));
-      box.appendChild(el("div", "gt-spin__code", result.code || ""));
-      box.appendChild(
-        el("p", "gt-spin__note", result.rewardLabel + ". Expired on " + expiry + "."),
-      );
-    } else {
-      box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
-      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.discount));
-      box.appendChild(el("div", "gt-spin__code", result.code || ""));
-      var copy = el(
-        "button",
-        "gt-spin__button gt-spin__button--secondary gt-spin__copy",
-        "Copy code",
-      );
-      copy.type = "button";
-      copy.addEventListener("click", function () {
-        copyText(result.code || "", copy);
-      });
-      box.appendChild(copy);
+      renderCodeBox(box, result.code || "");
       box.appendChild(
         el(
           "p",
-          "gt-spin__note",
-          "Use it on your next GreenTee order. One use, and it's yours only. Valid until " +
-            expiry +
-            ".",
+          "gt-spin__meta-text",
+          result.rewardLabel + " · Expired " + formatExpiryShort(result.expiresAt),
         ),
       );
-      box.appendChild(el("p", "gt-spin__note", COPY.keepSafe));
+    } else {
+      box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+      renderCodeBox(box, result.code || "");
+      var link = discountLink(result);
+      var primary = el("a", "gt-spin__button gt-spin__primary", link.label);
+      primary.setAttribute("href", link.href);
+      box.appendChild(primary);
+      box.appendChild(
+        el(
+          "p",
+          "gt-spin__meta-text",
+          "Valid until " + formatExpiryShort(result.expiresAt) + " · One-time use",
+        ),
+      );
+      box.appendChild(el("p", "gt-spin__meta-text", COPY.keepSafe));
     }
     if (result.testMode) box.appendChild(el("span", "gt-spin__badge", "Test spin"));
 
     if (orderUrl) {
-      var giftPending =
-        result.rewardType === "gift" && (!result.gift || result.gift.status !== "added");
-      // While a gift still needs confirming, the back link stays quiet so the
-      // confirm button is the one obvious action on the card.
-      var back = el(
-        "a",
-        giftPending
-          ? "gt-spin__back gt-spin__back--quiet"
-          : "gt-spin__button gt-spin__button--secondary gt-spin__back",
-        cfg.backLabel,
-      );
+      var back = el("a", "gt-spin__back-link", cfg.backLabel);
       back.setAttribute("href", orderUrl);
       box.appendChild(back);
     }
@@ -516,17 +544,78 @@
     }
   }
 
+  /**
+   * The code box is the copy control: one full-width button holding the code
+   * and a copy icon. Copying swaps the icon for a check and shows "Copied" for
+   * two seconds; an aria-live region announces it. Without the Clipboard API
+   * the code text is selected so it can be copied by hand.
+   */
+  function renderCodeBox(box, code) {
+    var btn = el("button", "gt-spin__code-box");
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Copy discount code");
+    var text = el("span", "gt-spin__code-text", code);
+    var copied = el("span", "gt-spin__code-copied", "Copied");
+    copied.hidden = true;
+    var icon = el("span", "gt-spin__code-icon");
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = ICON_COPY;
+    btn.appendChild(text);
+    btn.appendChild(copied);
+    btn.appendChild(icon);
+    var live = el("span", "gt-spin__sr");
+    live.setAttribute("aria-live", "polite");
+    box.appendChild(btn);
+    box.appendChild(live);
+
+    var timer = null;
+    var onCopied = function () {
+      icon.innerHTML = ICON_CHECK;
+      copied.hidden = false;
+      btn.classList.add("gt-spin__code-box--copied");
+      live.textContent = "Code copied";
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        icon.innerHTML = ICON_COPY;
+        copied.hidden = true;
+        btn.classList.remove("gt-spin__code-box--copied");
+        live.textContent = "";
+      }, 2000);
+    };
+    var selectCode = function () {
+      try {
+        var range = document.createRange();
+        range.selectNodeContents(text);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    btn.addEventListener("click", function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(onCopied, selectCode);
+      } else {
+        selectCode();
+      }
+    });
+  }
+
   function renderGift(box, result, offer, message) {
     var gift = result.gift || { status: "pending" };
 
     if (gift.status === "added") {
       box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
-      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.gift));
       var what = gift.variantTitle
         ? result.rewardLabel + " (" + gift.variantTitle + ")"
         : result.rewardLabel;
-      box.appendChild(el("p", "gt-spin__note", "Added to your order: " + what + "."));
-      box.appendChild(el("p", "gt-spin__note", COPY.giftAdded));
+      var shop = el("a", "gt-spin__button gt-spin__primary", "Start shopping");
+      shop.setAttribute("href", SHOP_ORIGIN + "/");
+      box.appendChild(shop);
+      box.appendChild(
+        el("p", "gt-spin__meta-text", "Added to this order at no charge: " + what + "."),
+      );
       return;
     }
 
@@ -540,7 +629,6 @@
       box.appendChild(img);
     }
     box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
-    box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.gift));
     if (offer && offer.note) box.appendChild(el("p", "gt-spin__note", offer.note));
     if (message) box.appendChild(el("p", "gt-spin__note gt-spin__note--warn", message));
 
@@ -694,41 +782,6 @@
         r.body && r.body.message && r.status < 500 ? r.body.message : COPY.giftFailed;
       errorLine.hidden = false;
     });
-  }
-
-  function copyText(text, button) {
-    var done = function () {
-      var original = button.textContent;
-      button.textContent = "Copied";
-      setTimeout(function () {
-        button.textContent = original;
-      }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, function () {
-        fallbackCopy(text);
-        done();
-      });
-    } else {
-      fallbackCopy(text);
-      done();
-    }
-  }
-
-  function fallbackCopy(text) {
-    var ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "absolute";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand("copy");
-    } catch (e) {
-      /* ignore */
-    }
-    document.body.removeChild(ta);
   }
 
   // ------------------------------------------------------------------ flows

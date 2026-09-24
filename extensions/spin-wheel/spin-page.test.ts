@@ -275,11 +275,64 @@ describe("spin page: spin and results", () => {
     const result = p.el("[data-result]");
     expect(result.hidden).toBe(false);
     expect(result.textContent).toContain("You won 15% Off Eligible Accessories!");
-    expect(result.textContent).toContain("order confirmation email");
-    expect(result.querySelector("a.gt-spin__back")?.getAttribute("href")).toBe(
-      "https://shop.example/orders/1",
+    // Code box is the copy control, no badge next to it.
+    const codeBox = result.querySelector<HTMLButtonElement>("button.gt-spin__code-box")!;
+    expect(codeBox.getAttribute("aria-label")).toBe("Copy discount code");
+    expect(codeBox.querySelector(".gt-spin__code-text")?.textContent).toBe(RESULT.code);
+    expect(result.querySelector(".gt-spin__tag--result")).toBeNull();
+    // Primary: apply the code and land on the matching collection.
+    const primary = result.querySelector<HTMLAnchorElement>("a.gt-spin__primary")!;
+    expect(primary.textContent).toBe("Shop accessories with code applied");
+    expect(primary.getAttribute("href")).toBe(
+      "https://shop.greenteegolfshop.com/discount/" +
+        encodeURIComponent(RESULT.code) +
+        "?redirect=%2Fcollections%2Faccessories",
     );
+    // Meta lines with the short date.
+    const meta = [...result.querySelectorAll(".gt-spin__meta-text")].map((m) => m.textContent);
+    expect(meta).toEqual([
+      "Valid until Nov 2, 2026 · One-time use",
+      "Also saved in your confirmation email.",
+    ]);
+    // Back is a plain text link, not a button.
+    const back = result.querySelector<HTMLAnchorElement>("a.gt-spin__back-link")!;
+    expect(back.getAttribute("href")).toBe("https://shop.example/orders/1");
+    expect(back.classList.contains("gt-spin__button")).toBe(false);
     expect(p.el("[data-spin]").hidden).toBe(true);
+  });
+
+  it("copies the code from the box, confirms it, and announces it", async () => {
+    const written: string[] = [];
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      clipboard: { writeText: async (t: string) => void written.push(t) },
+    });
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: { ...ELIGIBLE, alreadySpun: true, result: RESULT } },
+    });
+    const box = p.el("[data-result]");
+    const btn = box.querySelector<HTMLButtonElement>("button.gt-spin__code-box")!;
+    btn.click();
+    await flush();
+    expect(written).toEqual([RESULT.code]);
+    expect(btn.classList.contains("gt-spin__code-box--copied")).toBe(true);
+    expect(btn.querySelector<HTMLElement>(".gt-spin__code-copied")!.hidden).toBe(false);
+    expect(box.querySelector('[aria-live="polite"]')?.textContent).toBe("Code copied");
+    expect(btn.querySelector("svg path")?.getAttribute("d")).toMatch(/^M5 12\.5/); // check icon
+  });
+
+  it("selects the code text when the Clipboard API is unavailable", async () => {
+    vi.stubGlobal("navigator", { ...navigator, clipboard: undefined });
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: { ...ELIGIBLE, alreadySpun: true, result: RESULT } },
+    });
+    const btn = p.el("[data-result]").querySelector<HTMLButtonElement>("button.gt-spin__code-box")!;
+    btn.click();
+    await flush();
+    expect(String(window.getSelection())).toBe(RESULT.code);
+    expect(btn.classList.contains("gt-spin__code-box--copied")).toBe(false);
   });
 
   it("shows a stored result on load without spinning", async () => {
@@ -413,7 +466,7 @@ describe("spin page: gifts", () => {
     expect(at("gt-spin__gift-image")).toBeLessThan(at("gt-spin__result-heading"));
     expect(at("gt-spin__choice-row")).toBeLessThan(at("gt-spin__gift-confirm"));
     expect(box.querySelectorAll(".gt-spin__button")).toHaveLength(1);
-    expect(box.querySelector("a.gt-spin__back")?.className).toContain("gt-spin__back--quiet");
+    expect(box.querySelector("a.gt-spin__back-link")).not.toBeNull();
 
     const chip = (option: string, value: string) =>
       box.querySelector<HTMLButtonElement>(
@@ -438,10 +491,15 @@ describe("spin page: gifts", () => {
     box.querySelector<HTMLButtonElement>(".gt-spin__gift-confirm")!.click();
     await flush();
     expect(p.giftBodies).toEqual([{ token: "ok", selection: { Hand: "RH", Size: "22" } }]);
-    expect(box.textContent).toContain("Added to your order: GFJ Gloves (RH / 22 / White).");
+    expect(box.textContent).toContain(
+      "Added to this order at no charge: GFJ Gloves (RH / 22 / White).",
+    );
     expect(box.querySelector(".gt-spin__gift-confirm")).toBeNull();
-    expect(box.querySelector("a.gt-spin__back")?.className).toContain("gt-spin__button");
-    expect(box.querySelector("a.gt-spin__back")?.className).not.toContain("quiet");
+    // Gift winners get "Start shopping" as the primary, and a text back link.
+    const shop = box.querySelector<HTMLAnchorElement>("a.gt-spin__primary")!;
+    expect(shop.textContent).toBe("Start shopping");
+    expect(shop.getAttribute("href")).toBe("https://shop.greenteegolfshop.com/");
+    expect(box.querySelector("a.gt-spin__back-link")).not.toBeNull();
   });
 
   it("confirms socks with no selection step", async () => {
@@ -474,7 +532,7 @@ describe("spin page: gifts", () => {
     box.querySelector<HTMLButtonElement>(".gt-spin__gift-confirm")!.click();
     await flush();
     expect(p.giftBodies).toEqual([{ token: "ok" }]);
-    expect(box.textContent).toContain("Added to your order: GFJ Socks (Beige).");
+    expect(box.textContent).toContain("Added to this order at no charge: GFJ Socks (Beige).");
   });
 
   it("shows the out-of-stock message and no confirm button when nothing is available", async () => {
@@ -531,7 +589,7 @@ describe("spin page: gifts", () => {
     confirm.click();
     await flush();
     expect(p.giftBodies).toHaveLength(2);
-    expect(box.textContent).toContain("Added to your order");
+    expect(box.textContent).toContain("Added to this order at no charge");
   });
 
   it("renders the gift step right after a gift spin", async () => {
@@ -606,16 +664,14 @@ describe("spin page: colour, chips, odds and overlay", () => {
     labels.forEach((l) => expect(l.style.transform).toContain("rotate(20deg)"));
   });
 
-  it("shows the reward-type chip on the result card", async () => {
+  it("shows no reward-type chip on the result card", async () => {
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: { status: 200, body: ELIGIBLE },
     });
     p.el("[data-spin]").click();
     await flush();
-    expect(p.el("[data-result]").querySelector(".gt-spin__tag--result")?.textContent).toBe(
-      "Discount",
-    );
+    expect(p.el("[data-result]").querySelector(".gt-spin__tag--result")).toBeNull();
     const gift = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: {
@@ -623,9 +679,7 @@ describe("spin page: colour, chips, odds and overlay", () => {
         body: { ...ELIGIBLE, alreadySpun: true, result: GIFT_RESULT, giftOffer: GLOVE_OFFER },
       },
     });
-    expect(gift.el("[data-result]").querySelector(".gt-spin__tag--result")?.textContent).toBe(
-      "Free gift",
-    );
+    expect(gift.el("[data-result]").querySelector(".gt-spin__tag--result")).toBeNull();
   });
 
   it("renders the odds from the server, never from the markup", async () => {

@@ -9,8 +9,24 @@
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
+  /* Explicit, not inherited: storefront theme CSS must not restyle the modal. */
   color: var(--gt-navy);
+  background: var(--gt-bg);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Beat theme type selectors (h2, p, button, a) with a class-qualified rule. */
+.gt-spin :is(h1, h2, h3, p, span, button, a, div) {
   font-family: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
 }
 
 .gt-spin:not(.gt-spin--overlay) {
@@ -198,12 +214,6 @@ html.gt-spin-open body {
   will-change: transform;
 }
 
-.gt-spin__tag--result {
-  margin: 0 0 0.6rem;
-  font-size: 0.75rem;
-  opacity: 0.75;
-}
-
 /* Odds disclosure: small and secondary. */
 .gt-spin__meta {
   margin: -0.25rem auto 1rem;
@@ -335,23 +345,92 @@ html.gt-spin-open body {
   line-height: 1.25;
 }
 
-.gt-spin__code {
-  display: inline-block;
-  margin: 0.5rem 0;
-  padding: 0.55rem 1rem;
-  border: 1px dashed var(--gt-navy);
-  border-radius: 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1.4rem;
-  letter-spacing: 0.08em;
-  user-select: all;
+/* The code box: full width, code left, icon right, the whole box copies. */
+.gt-spin__code-box {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0.25rem 0 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 2px dashed var(--gt-navy);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--gt-navy);
+  cursor: pointer;
+  text-align: left;
 }
 
-.gt-spin__copy {
-  width: auto;
-  margin: 0.25rem auto 0.75rem;
-  padding: 0.5rem 1.2rem;
-  font-size: 0.85rem;
+.gt-spin__code-box:focus-visible {
+  outline: 2px solid var(--gt-navy);
+  outline-offset: 2px;
+}
+
+.gt-spin__code-box--copied {
+  border-style: solid;
+}
+
+.gt-spin__code-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.35rem;
+  letter-spacing: 0.1em;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.gt-spin__code-copied {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gt-spin__code-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.gt-spin__primary {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  /* "Shop accessories with code applied" must stay on one line at 375px. */
+  padding-inline: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.gt-spin__meta-text {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.gt-spin__back-link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--gt-navy);
+  text-decoration: none;
+}
+
+.gt-spin__back-link:hover,
+.gt-spin__back-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.gt-spin__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .gt-spin__note {
@@ -418,20 +497,6 @@ html.gt-spin-open body {
 
 .gt-spin__gift-confirm {
   margin-top: 0.5rem;
-}
-
-.gt-spin__back {
-  margin-top: 1rem;
-  display: inline-block;
-}
-
-.gt-spin__back--quiet {
-  margin-top: 1.25rem;
-  font-size: 0.85rem;
-  color: var(--gt-navy);
-  opacity: 0.7;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .gt-spin__gift-image {
