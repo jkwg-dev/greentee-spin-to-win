@@ -38,11 +38,21 @@ export interface AdminClient {
 export class AdminGraphqlError extends Error {
   readonly retryable: boolean;
   readonly details: unknown;
-  constructor(message: string, opts: { retryable: boolean; details?: unknown; cause?: unknown }) {
+  /**
+   * True when the request line for this call already carried the details.
+   * `serializeError` then logs only the message, so one failure does not
+   * print the same GraphQL errors twice plus a stack.
+   */
+  readonly logged: boolean;
+  constructor(
+    message: string,
+    opts: { retryable: boolean; details?: unknown; cause?: unknown; logged?: boolean },
+  ) {
     super(message, { cause: opts.cause });
     this.name = "AdminGraphqlError";
     this.retryable = opts.retryable;
     this.details = opts.details;
+    this.logged = opts.logged === true;
   }
 }
 
@@ -215,6 +225,7 @@ export function createAdminClient(opts: AdminClientOptions): AdminClient {
         throw new AdminGraphqlError(`Admin API errors for ${ctx.operation}`, {
           retryable: false,
           details: json.errors,
+          logged: true, // the admin.request line above already carried json.errors
         });
       }
       return json.data;

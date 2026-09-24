@@ -36,6 +36,11 @@ export function setLogSink(next: Sink | null): void {
 
 export function serializeError(err: unknown): LogFields {
   if (err instanceof Error) {
+    // The Admin wrapper already logged this with its operation, order ID and
+    // the full GraphQL errors. Repeating the payload and a stack here is noise.
+    if ((err as { logged?: boolean }).logged === true) {
+      return { name: err.name, message: err.message, alreadyLogged: true };
+    }
     return {
       name: err.name,
       message: err.message,

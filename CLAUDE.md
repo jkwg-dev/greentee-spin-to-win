@@ -175,6 +175,7 @@ Each scope is tied to a specific operation. Do not add one without adding its ro
 | `write_orders`      | `metafieldsSet` on an Order (the spin record) and `tagsAdd` / `tagsRemove` on an Order (`gift-pending`, `gift-added`). Write includes read, so it also covers the `order` lookup. |
 | `write_discounts`   | `discountCodeBasicCreate`; includes read for `codeDiscountNodeByCode` on a duplicate. |
 | `write_order_edits` | `orderEditBegin`, `orderEditAddVariant`, `orderEditAddLineItemDiscount`, `orderEditCommit`. Order editing has its own scope; `write_orders` does not grant it. |
+| `read_customers`    | **Not requested.** Nothing may read `order.customer`; test users come from the order's own tags and email. |
 | `read_products`     | `product` with `variants` (`availableForSale`, `inventoryQuantity`, `selectedOptions`, `featuredImage`) for gift stock and the size list. Read only; nothing writes products. |
 
 Order access only covers orders from the last 60 days, which is sufficient here. Do not request
@@ -265,14 +266,19 @@ real customer seeing the wheel. `CAMPAIGN_MODE` controls this.
 
 ### Who counts as a test user
 
-Evaluated server side during eligibility, in this order. Any match qualifies.
+Evaluated server side during eligibility, from the order alone. Either match qualifies.
 
-1. The order's customer has the tag in `TEST_TAG` (default `test-user`).
-2. The order itself has that tag. This covers guest checkouts and lets staff flag a single order
-   after the fact.
-3. The order email is in `TEST_EMAILS`.
+1. The order itself carries the tag in `TEST_TAG` (default `test-user`). This covers guest
+   checkouts and lets staff flag a single order after the fact.
+2. The order email is in `TEST_EMAILS`.
 
 Tag matching is case insensitive and trims whitespace, because Shopify tags are entered by hand.
+
+**Customer tags are deliberately not consulted.** Reading `order.customer` requires the
+`read_customers` scope, which this app does not request, and asking for it returns
+`Access denied for customer field`. Tag the order, not the customer. `order.email` is protected
+customer data: if that approval is missing the field is null and only the order tag works, so
+the order tag is the reliable route.
 
 ### What changes for a test user
 

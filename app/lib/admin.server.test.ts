@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAdminClient } from "./admin.server";
-import { setLogSink, type LogLine } from "./log.server";
+import { log, setLogSink, type LogLine } from "./log.server";
 
 let lines: LogLine[] = [];
 beforeEach(() => {
@@ -115,6 +115,37 @@ describe("admin client logging", () => {
     await admin.request("query {}", {}, { operation: "b" });
     expect(tokens).toBe(2);
     expect(lines.filter((l) => l.event === "admin.unauthorized.refreshing_token")).toHaveLength(1);
+  });
+
+  it("does not make the caller log the same failure twice", async () => {
+    // A scope failure like "Access denied for customer field" arrives as a
+    // top-level GraphQL error. admin.request logs it with the operation and
+    // order ID, so the route's catch must not repeat the payload and a stack.
+    const admin = client([
+      () => token(),
+      () =>
+        gql({
+          errors: [
+            {
+              message:
+                "Access denied for customer field. Required access: read_customers access scope.",
+            },
+          ],
+        }),
+    ]);
+    const err = await admin
+      .request("query {}", {}, { operation: "order", orderId: "5678" })
+      .catch((e) => e);
+    lines.length = 0;
+    log.error("status.failed", { orderId: "5678", error: err });
+    const logged = lines[0].error as Record<string, unknown>;
+    expect(logged).toEqual({
+      name: "AdminGraphqlError",
+      message: "Admin API errors for order",
+      alreadyLogged: true,
+    });
+    expect(logged.stack).toBeUndefined();
+    expect(logged.details).toBeUndefined();
   });
 
   it("surfaces top-level GraphQL errors as non-retryable with details", async () => {

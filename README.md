@@ -70,8 +70,9 @@ without a deploy. It is re-read every 30 seconds. `GET /` reports the current mo
 
 ## Test mode
 
-Test users are orders whose customer or order carries the `test-user` tag (case insensitive),
-or whose email is in `TEST_EMAILS`. Their spins are flagged `testMode`, use `GT-TEST-` codes
+Test users are orders that themselves carry the `test-user` tag (case insensitive), or whose
+email is in `TEST_EMAILS`. Customer tags are not consulted: that would need `read_customers`,
+which this app does not request. Tag the order, not the customer. Their spins are flagged `testMode`, use `GT-TEST-` codes
 and `Spin TEST` discount titles, and may pass `forceSlice` (1 to 9) to the execute endpoint.
 Testers bypass the campaign start date so the flow can be exercised before October 1, but never
 the end date, so a stale test link cannot mint a code after the promotion closes. They bypass the

@@ -41,9 +41,14 @@ write_order_edits, read_products` and both extensions).
 
 ## 3. Test on the live store (campaign mode `test`)
 
-Tag your test customer `test-user` (or add your email to `TEST_EMAILS`; that route only works
-once protected customer data with the email field is approved, so prefer the tag). Set
-`TEST_BYPASS_MIN_SUBTOTAL=true` while testing cheap orders.
+Tag the **order** `test-user` in Shopify admin (Orders, open the order, Tags). Tagging the
+customer has no effect: the app cannot read customer records. Adding your address to
+`TEST_EMAILS` also works, but only once protected customer data with the email field is
+approved, so the order tag is the reliable route. Set `TEST_BYPASS_MIN_SUBTOTAL=true` while
+testing cheap orders.
+
+Because the tag goes on the order, place the order first, tag it, then open the Thank you page
+link again (or the order status page) so the app re-reads it.
 
 - [ ] Order at $299.99 and at $300.00 with a non-test customer: the first is ineligible, the
       second is not shown at all while mode is `test` (only testers see the wheel).
@@ -68,8 +73,8 @@ once protected customer data with the email field is approved, so prefer the tag
       every `Spin TEST` discount and clears test spin records. Confirm in Discounts. Run it again
       after any change to the reward table (the wheel went from ten slices to nine on
       September 23) so no test record carries indices from an older table.
-- [ ] Remove the `test-user` tag from any real customer accounts used for testing, or leave
-      it only on staff accounts.
+- [ ] Remove the `test-user` tag from any real orders used for testing. Search
+      `tag:test-user` in Orders.
 - [ ] `TEST_BYPASS_MIN_SUBTOTAL=false` on the host.
 - [ ] Share `docs/OPERATIONS.md` with the fulfilment team.
 

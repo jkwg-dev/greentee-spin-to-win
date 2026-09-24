@@ -9,6 +9,11 @@ import { log } from "~/lib/log.server";
 import { normalizeOrderId, orderGid } from "~/lib/outcome";
 import { parseSpinResult } from "~/lib/spin-result";
 
+/**
+ * Deliberately does not request `order.customer`. That field needs
+ * `read_customers`, which this app does not have and will not request: test
+ * users are identified from the order alone (its own tags and its email).
+ */
 export const ORDER_QUERY = /* GraphQL */ `
   query SpinOrder($id: ID!, $namespace: String!, $key: String!) {
     order(id: $id) {
@@ -23,10 +28,6 @@ export const ORDER_QUERY = /* GraphQL */ `
           amount
           currencyCode
         }
-      }
-      customer {
-        id
-        tags
       }
       metafield(namespace: $namespace, key: $key) {
         id
@@ -45,10 +46,6 @@ interface OrderQueryData {
     tags: string[];
     statusPageUrl: string | null;
     currentSubtotalPriceSet: { shopMoney: { amount: string; currencyCode: string } };
-    customer: {
-      id: string;
-      tags: string[];
-    } | null;
     metafield: { id: string; value: string } | null;
   } | null;
 }
@@ -66,12 +63,6 @@ export function toSnapshot(o: NonNullable<OrderQueryData["order"]>): OrderSnapsh
       currencyCode: o.currentSubtotalPriceSet.shopMoney.currencyCode,
     },
     tags: o.tags,
-    customer: o.customer
-      ? {
-          id: o.customer.id,
-          tags: o.customer.tags,
-        }
-      : null,
     spinResult: parseSpinResult(o.metafield?.value),
   };
 }

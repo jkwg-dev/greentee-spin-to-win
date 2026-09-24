@@ -30,20 +30,16 @@ function order(over: Partial<OrderSnapshot> = {}): OrderSnapshot {
     statusPageUrl: "https://greentee.myshopify.com/orders/abc",
     subtotal: { amount: 300, currencyCode: "CAD" },
     tags: [],
-    customer: { id: "gid://shopify/Customer/1", tags: [] },
     spinResult: null,
     ...over,
   };
 }
 
 describe("isTestUser", () => {
-  it("matches the customer tag case-insensitively with whitespace", () => {
-    expect(isTestUser(order({ customer: { id: "c", tags: [" Test-USER "] } }), env)).toBe(true);
-    expect(isTestUser(order({ customer: { id: "c", tags: ["vip"] } }), env)).toBe(false);
-  });
-
-  it("matches the order tag, covering guest checkouts", () => {
-    expect(isTestUser(order({ customer: null, tags: ["TEST-user"] }), env)).toBe(true);
+  it("matches the order tag case-insensitively with whitespace", () => {
+    expect(isTestUser(order({ tags: [" Test-USER "] }), env)).toBe(true);
+    expect(isTestUser(order({ tags: ["TEST-user"] }), env)).toBe(true);
+    expect(isTestUser(order({ tags: ["vip"] }), env)).toBe(false);
   });
 
   it("matches the email allowlist case-insensitively", () => {
@@ -51,8 +47,13 @@ describe("isTestUser", () => {
     expect(isTestUser(order({ email: "someone@example.com" }), env)).toBe(false);
   });
 
-  it("is false for an ordinary guest order", () => {
-    expect(isTestUser(order({ customer: null }), env)).toBe(false);
+  it("does not consult customer tags, which would need read_customers", () => {
+    // Only the order's own tags count. Tagging the customer has no effect.
+    expect(isTestUser(order({ tags: [], email: "buyer@example.com" }), env)).toBe(false);
+  });
+
+  it("is false when the email is gated to null and the order is untagged", () => {
+    expect(isTestUser(order({ email: null, tags: [] }), env)).toBe(false);
   });
 });
 

@@ -8,9 +8,9 @@
  * 2. Clears the greentee_spin.result metafield from test orders. Candidates
  *    are orders carrying the test tag, plus every order created since
  *    `--since=YYYY-MM-DD` (default 2026-09-01, which covers the whole test
- *    phase; customer-tag testers produce untagged orders, and the app does
- *    not request read_customers). A candidate is only cleared when its stored
- *    record is flagged testMode or uses a GT-TEST- code.
+ *    phase, so an email-allowlisted tester's untagged order is caught too).
+ *    A candidate is only cleared when its stored record is flagged testMode
+ *    or uses a GT-TEST- code.
  *
  * Nothing without the test prefix / flag is ever touched.
  */

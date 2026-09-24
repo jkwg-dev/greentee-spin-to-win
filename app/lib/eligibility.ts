@@ -19,17 +19,17 @@ export interface OrderSnapshot {
   /** currentSubtotalPriceSet.shopMoney: after discounts, before tax and shipping. */
   readonly subtotal: { readonly amount: number; readonly currencyCode: string };
   readonly tags: readonly string[];
-  readonly customer: {
-    readonly id: string;
-    readonly tags: readonly string[];
-  } | null;
   readonly spinResult: SpinResultRecord | null;
 }
 
+/**
+ * A test user is identified from the order alone: its own tags, or its email
+ * in TEST_EMAILS. Customer tags are deliberately not consulted, because
+ * reading `order.customer` needs the `read_customers` scope that this app
+ * does not request. Tag an order, not a customer.
+ */
 export function isTestUser(order: OrderSnapshot, env: AppEnv): boolean {
-  const tag = env.testTag;
-  if (order.customer?.tags.some((t) => normalizeTag(t) === tag)) return true;
-  if (order.tags.some((t) => normalizeTag(t) === tag)) return true;
+  if (order.tags.some((t) => normalizeTag(t) === env.testTag)) return true;
   if (order.email && env.testEmails.has(normalizeTag(order.email))) return true;
   return false;
 }
