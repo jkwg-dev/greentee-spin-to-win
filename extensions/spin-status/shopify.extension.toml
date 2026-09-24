@@ -23,6 +23,12 @@ network_access = true
 
 [extensions.settings]
   [[extensions.settings.fields]]
+  key = "wheel_image_url"
+  type = "single_line_text_field"
+  name = "Wheel image URL (Thank you page)"
+  description = "Optional decorative wheel image shown beside the spin button. Leave blank to show none."
+
+  [[extensions.settings.fields]]
   key = "app_url"
   type = "single_line_text_field"
   name = "Spin to Win server URL"

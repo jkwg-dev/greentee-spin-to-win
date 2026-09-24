@@ -32,7 +32,8 @@ interface WheelCall {
   a: unknown[];
 }
 
-const WHEEL = [
+const TYPE = (t: string) => (t === "gift" ? "Free gift" : "Discount");
+const WHEEL_BASE = [
   { index: 1, label: "10% Off Clubs", icon: "club", rewardType: "discount" },
   { index: 2, label: "GFJ Gloves", icon: "glove", rewardType: "gift" },
   { index: 3, label: "15% Off Accessories", icon: "bag", rewardType: "discount" },
@@ -43,6 +44,7 @@ const WHEEL = [
   { index: 8, label: "GFJ Club Brush", icon: "brush", rewardType: "gift" },
   { index: 9, label: "GFJ Socks", icon: "sock", rewardType: "gift" },
 ];
+const WHEEL = WHEEL_BASE.map((w) => ({ ...w, typeLabel: TYPE(w.rewardType) }));
 
 const RESULT = {
   sliceIndex: 3,
@@ -65,6 +67,8 @@ const ELIGIBLE = {
   testMode: false,
   wheel: WHEEL,
   orderUrl: "https://shop.example/orders/1",
+  odds: { discountPercent: 75, giftPercent: 25 },
+  rewardTypeLabels: { discount: "Discount", gift: "Free gift" },
 };
 
 type Reply = { status: number; body: unknown };
@@ -534,3 +538,104 @@ describe("spin page: gifts", () => {
     expect(p.el("[data-result]").querySelectorAll(".gt-spin__chip")).toHaveLength(3);
   });
 });
+
+describe("spin page: colour, chips, odds and overlay", () => {
+  const CREAM = "#efe9dc";
+  const NAVY = "#1b2a3d";
+  const GREEN = "#2e5a3e";
+
+  it("colours discounts cream and alternates navy/green across gifts so no two touch", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    const items = p.wheel()!.items as Array<{ backgroundColor: string }>;
+    const bgs = items.map((i) => i.backgroundColor.toLowerCase());
+    WHEEL.forEach((w, i) => {
+      if (w.rewardType === "discount") expect(bgs[i]).toBe(CREAM);
+      else expect([NAVY, GREEN]).toContain(bgs[i]);
+    });
+    for (let i = 1; i < bgs.length; i++) {
+      if (WHEEL[i].rewardType === "gift" && WHEEL[i - 1].rewardType === "gift") {
+        expect(bgs[i]).not.toBe(bgs[i - 1]);
+      }
+    }
+    // Label text contrasts with its slice: navy on cream, cream on navy/green.
+    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    labels.forEach((l, i) => {
+      const expected = bgs[i] === CREAM ? NAVY : CREAM;
+      expect(l.style.color.replace(/\s/g, "")).toBe(hexToRgb(expected));
+    });
+  });
+
+  it("puts a reward-type badge on the outer edge of every slice, outside the label", async () => {
+    await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
+    const tags = [...document.querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
+    expect(tags.map((c) => c.textContent)).toEqual(WHEEL.map((w) => w.typeLabel));
+    expect(document.querySelectorAll(".gt-spin__label .gt-spin__tag")).toHaveLength(0);
+    // Further from the centre than the label at the same angle.
+    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    const dist = (e: HTMLElement) =>
+      Math.hypot(parseFloat(e.style.left) - 50, parseFloat(e.style.top) - 50);
+    tags.forEach((t, i) => expect(dist(t)).toBeGreaterThan(dist(labels[i])));
+  });
+
+  it("shows the reward-type chip on the result card", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    p.el("[data-spin]").click();
+    await flush();
+    expect(p.el("[data-result]").querySelector(".gt-spin__tag--result")?.textContent).toBe(
+      "Discount",
+    );
+    const gift = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: {
+        status: 200,
+        body: { ...ELIGIBLE, alreadySpun: true, result: GIFT_RESULT, giftOffer: GLOVE_OFFER },
+      },
+    });
+    expect(gift.el("[data-result]").querySelector(".gt-spin__tag--result")?.textContent).toBe(
+      "Free gift",
+    );
+  });
+
+  it("renders the odds from the server, never from the markup", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: { ...ELIGIBLE, odds: { discountPercent: 60, giftPercent: 40 } } },
+    });
+    expect(p.el("[data-odds]").hidden).toBe(false);
+    expect(p.el("[data-odds-line]").textContent).toBe(
+      "Odds: a 60% chance of a discount code and a 40% chance of a complimentary GFJ gift.",
+    );
+    expect(p.el("[data-odds]").textContent).toContain("do not represent the actual chances");
+  });
+
+  it("moves the overlay to <body> and locks scroll, so a transformed theme section cannot trap it", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    const root = p.el("[data-gt-spin]");
+    expect(root.parentElement).toBe(document.body);
+    expect(document.documentElement.classList.contains("gt-spin-open")).toBe(true);
+  });
+
+  it("points the close control at the order's own status page", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    const close = p.el("[data-close]") as HTMLAnchorElement;
+    expect(close.hidden).toBe(false);
+    expect(close.getAttribute("href")).toBe("https://shop.example/orders/1");
+  });
+});
+
+function hexToRgb(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255})`;
+}

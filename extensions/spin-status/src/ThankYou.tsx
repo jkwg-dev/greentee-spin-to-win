@@ -10,7 +10,7 @@
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
 import { SpinResult, TestBadge } from "./shared/SpinResult";
-import { appUrlFromSettings, useSpinStatus } from "./shared/useSpinStatus";
+import { appUrlFromSettings, imageUrlFromSettings, useSpinStatus } from "./shared/useSpinStatus";
 
 declare const shopify: import("@shopify/ui-extensions/purchase.thank-you.block.render").Api;
 
@@ -20,7 +20,9 @@ export default function extension() {
 
 function Extension() {
   const orderId = shopify.orderConfirmation.value?.order.id ?? null;
-  const appUrl = appUrlFromSettings(shopify.settings.value as Record<string, unknown> | undefined);
+  const settings = shopify.settings.value as Record<string, unknown> | undefined;
+  const appUrl = appUrlFromSettings(settings);
+  const wheelImage = imageUrlFromSettings(settings);
   const { state, reload } = useSpinStatus({
     orderId,
     appUrl,
@@ -52,27 +54,49 @@ function Extension() {
         </s-banner>
       );
 
-    case "eligible":
+    case "eligible": {
+      const body = (
+        <s-stack direction="block" gap="base">
+          <s-paragraph>
+            This order qualifies for one spin. Win a discount code for your next purchase or a
+            complimentary GFJ gift.
+          </s-paragraph>
+          {state.spinUrl ? (
+            <s-button variant="primary" href={state.spinUrl}>
+              Spin the wheel
+            </s-button>
+          ) : (
+            <s-paragraph color="subdued">
+              Your spin link is being prepared. Refresh in a moment.
+            </s-paragraph>
+          )}
+          {state.testMode ? <TestBadge /> : null}
+        </s-stack>
+      );
       return (
         <s-banner tone="success" heading="You've unlocked a spin on the GreenTee wheel!">
-          <s-stack direction="block" gap="base">
-            <s-paragraph>
-              This order qualifies for one spin. Win a discount code for your next purchase or a
-              complimentary GFJ gift.
-            </s-paragraph>
-            {state.spinUrl ? (
-              <s-button variant="primary" href={state.spinUrl}>
-                Spin the wheel
-              </s-button>
-            ) : (
-              <s-paragraph color="subdued">
-                Your spin link is being prepared. Refresh in a moment.
-              </s-paragraph>
-            )}
-            {state.testMode ? <TestBadge /> : null}
-          </s-stack>
+          {wheelImage ? (
+            // Decorative image beside the text, capped at 96px, so the primary
+            // button stays above the fold on a phone instead of below a banner image.
+            <s-grid gridTemplateColumns="auto 1fr" gap="base" alignItems="center">
+              <s-box inlineSize="96px">
+                <s-image
+                  src={wheelImage}
+                  alt=""
+                  inlineSize="fill"
+                  aspectRatio="1"
+                  objectFit="contain"
+                  loading="lazy"
+                />
+              </s-box>
+              {body}
+            </s-grid>
+          ) : (
+            body
+          )}
         </s-banner>
       );
+    }
 
     case "spun":
       return (

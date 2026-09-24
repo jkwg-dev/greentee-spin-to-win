@@ -46,6 +46,17 @@ The wheel shows 9 slices. Slice probabilities are what the app actually rolls; t
 layout deliberately over-represents gifts. Every slice awards something; there is no "try again"
 slice (one was removed on purpose, so do not add a decorative slice back).
 
+Slices are coloured by what they award, not by position: discount slices are cream, gift slices
+alternate navy and green so two gift slices never touch in the same colour, and label text
+follows the background (navy on cream, cream on navy or green). Each slice carries a small
+"Discount" or "Free gift" chip, and the same chip appears on the result card.
+
+Because the layout over-represents gifts, the spin page discloses the real odds under the wheel
+(75% discount code, 25% gift) with a note that section size and placement do not represent the
+actual chances. Both numbers come from `rewardOdds()` in `app/config/campaign.ts`, derived from
+the table, and a test asserts the displayed split matches it. A block setting holds the
+promotion rules URL; the link renders only when it is set.
+
 | Slice | Reward displayed              | Reward key      | Probability |
 |-------|-------------------------------|-----------------|-------------|
 | 1     | 10% Off Eligible Clubs        | `clubs_10`      | 25%         |

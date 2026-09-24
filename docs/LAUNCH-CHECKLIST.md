@@ -32,10 +32,13 @@ write_order_edits, read_products` and both extensions).
 ## 2. Store setup
 
 - [ ] `pnpm setup:metafields` creates the order definition and the shop `campaign_mode` field.
+- [ ] Spin block settings: **Promotion rules link** set once the rules page exists (the link is
+      hidden until then); background colour left near-white unless the brand wants otherwise.
 - [ ] Storefront page exists at `SPIN_PAGE_URL` (e.g. `/pages/spin-to-win`), unlisted from
       navigation, with the **Spin to Win wheel** app block added and overlay mode on.
 - [ ] Checkout editor (Thank you page): add the **GreenTee Spin to Win** block and set its
-      **Spin to Win server URL** to `APP_URL`.
+      **Spin to Win server URL** to `APP_URL`. Optionally set **Wheel image URL** to an https
+      image (a Shopify Files upload works) for the decorative wheel beside the banner text.
 - [ ] Customer accounts editor (Order status page): add the same block and set the URL again.
 - [ ] Shop metafield **Spin to Win campaign mode** set to `test`.
 

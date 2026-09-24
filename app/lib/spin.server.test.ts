@@ -754,6 +754,16 @@ describe("executeSpin: test users and forceSlice", () => {
 });
 
 describe("getSpinState", () => {
+  it("includes the odds and chip labels derived from the reward table", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    const state = await getSpinState(DISCOUNT_ORDER, deps(admin));
+    expect(state).toMatchObject({
+      odds: { discountPercent: 75, giftPercent: 25 },
+      rewardTypeLabels: { discount: "Discount", gift: "Free gift" },
+    });
+  });
+
   it("includes the order status URL for the back button", async () => {
     const admin = new FakeAdmin();
     admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
@@ -775,6 +785,7 @@ describe("getSpinState", () => {
         label: s.wheelLabel,
         icon: s.icon,
         rewardType: s.rewardType,
+        typeLabel: s.rewardType === "gift" ? "Free gift" : "Discount",
       })),
     );
   });

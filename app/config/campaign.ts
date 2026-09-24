@@ -297,3 +297,28 @@ export const GIFT_LINE_DISCOUNT = {
 export function giftProductFor(rewardKey: RewardKey): GiftProduct | null {
   return rewardKey in GIFT_CATALOG ? GIFT_CATALOG[rewardKey as GiftKey] : null;
 }
+
+/* ------------------------------------------------------- disclosure */
+
+/** Customer facing names for the two reward kinds, shown as chips. */
+export const REWARD_TYPE_LABELS: Readonly<Record<RewardType, string>> = {
+  discount: "Discount",
+  gift: "Free gift",
+};
+
+export interface RewardOdds {
+  /** Whole percent chance of a discount code. */
+  readonly discountPercent: number;
+  /** Whole percent chance of a gift. */
+  readonly giftPercent: number;
+}
+
+/**
+ * The odds shown under the wheel, derived from the reward table so they can
+ * never drift from what the app actually rolls.
+ */
+export function rewardOdds(slices: readonly Slice[] = SLICES): RewardOdds {
+  const sum = (type: RewardType) =>
+    slices.filter((s) => s.rewardType === type).reduce((acc, s) => acc + s.probability, 0);
+  return { discountPercent: sum("discount"), giftPercent: sum("gift") };
+}

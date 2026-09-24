@@ -4,7 +4,9 @@
  */
 import {
   DISCOUNT_TITLE,
+  REWARD_TYPE_LABELS,
   SLICES,
+  rewardOdds,
   SPIN_RESULT_VERSION,
   SPIN_TOKEN_TTL_SECONDS,
   giftProductFor,
@@ -95,6 +97,8 @@ export interface WheelSlice {
   readonly label: string;
   readonly icon: Slice["icon"];
   readonly rewardType: Slice["rewardType"];
+  /** "Discount" or "Free gift", for the chip on the slice. */
+  readonly typeLabel: string;
 }
 
 /** What the storefront wheel draws. It never sees probabilities. */
@@ -103,7 +107,11 @@ export const WHEEL: readonly WheelSlice[] = SLICES.map((s) => ({
   label: s.wheelLabel,
   icon: s.icon,
   rewardType: s.rewardType,
+  typeLabel: REWARD_TYPE_LABELS[s.rewardType],
 }));
+
+/** Odds disclosure for the spin page, derived from the table. */
+export const ODDS = rewardOdds();
 
 export type SpinStatus =
   | { readonly campaignOpen: false }
@@ -143,6 +151,10 @@ export type SpinState = SpinStatus & {
   readonly orderUrl?: string | null;
   /** Present while a won gift is pending or unavailable, so the page can render the gift step. */
   readonly giftOffer?: GiftOffer | null;
+  /** Whole-percent odds of each reward kind, derived from the table. */
+  readonly odds?: { readonly discountPercent: number; readonly giftPercent: number };
+  /** Chip text per reward type. */
+  readonly rewardTypeLabels?: Readonly<Record<"discount" | "gift", string>>;
 };
 
 export type SpinExecution =
@@ -290,7 +302,14 @@ export async function getSpinState(orderId: string | number, deps: SpinDeps): Pr
   log.info("spin.state", { orderId: id, mode, ...summarize(status) });
   if (!status.campaignOpen) return status;
   const giftOffer = await offerFor(order, deps);
-  return { ...status, wheel: WHEEL, orderUrl: order.statusPageUrl, giftOffer };
+  return {
+    ...status,
+    wheel: WHEEL,
+    orderUrl: order.statusPageUrl,
+    giftOffer,
+    odds: ODDS,
+    rewardTypeLabels: REWARD_TYPE_LABELS,
+  };
 }
 
 export interface ExecuteOptions {

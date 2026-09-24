@@ -31,6 +31,8 @@
     retry: root.querySelector("[data-retry]"),
     result: root.querySelector("[data-result]"),
     close: root.querySelector("[data-close]"),
+    odds: root.querySelector("[data-odds]"),
+    oddsLine: root.querySelector("[data-odds-line]"),
   };
 
   var styles = getComputedStyle(root);
@@ -52,12 +54,34 @@
     },
   };
 
-  // Slice palette by position, as in the design: navy, cream, green, repeating.
-  var PALETTE = [
-    { bg: cfg.colors.navy, text: cfg.colors.cream },
-    { bg: cfg.colors.cream, text: cfg.colors.navy },
-    { bg: cfg.colors.green, text: cfg.colors.cream },
-  ];
+  /**
+   * Slice colours carry meaning: discounts are cream, gifts alternate navy
+   * and green so two gift slices never touch in the same colour. Text colour
+   * follows the background so contrast holds on every combination.
+   */
+  function paletteFor(slices) {
+    var out = [];
+    var lastGift = null;
+    for (var i = 0; i < slices.length; i++) {
+      if (slices[i].rewardType === "gift") {
+        var candidates = [cfg.colors.navy, cfg.colors.green];
+        var prevBg = i > 0 && slices[i - 1].rewardType === "gift" ? out[i - 1].bg : null;
+        var bg = candidates[0] === prevBg ? candidates[1] : candidates[0];
+        // Wrap-around: the last slice must also differ from the first.
+        if (i === slices.length - 1 && slices[0].rewardType === "gift" && out[0].bg === bg) {
+          bg = bg === candidates[0] ? candidates[1] : candidates[0];
+        }
+        out.push({ bg: bg, text: cfg.colors.cream });
+        lastGift = bg;
+      } else {
+        out.push({ bg: cfg.colors.cream, text: cfg.colors.navy });
+      }
+    }
+    return out;
+  }
+
+  var palette = [];
+  var typeLabels = { discount: "Discount", gift: "Free gift" };
 
   var ICONS = {
     club: '<path d="M14.5 3 9 16.5"/><path d="M9 16.5c-2 1.2-1.7 4.1.8 4.4 1.7.2 3.3-.6 4.8-2.3l1.6-1.8-4.4-1.9c-1-.4-2.1-.2-2.8.6z"/>',
@@ -99,7 +123,8 @@
   var SPIN_DURATION = 5200;
   var SPIN_REVOLUTIONS = 4;
   var REDUCED_DURATION = 700;
-  var LABEL_RADIUS = 0.64; // fraction of the wheel radius
+  var LABEL_RADIUS = 0.6; // fraction of the wheel radius: reward name and icon
+  var TAG_RADIUS = 0.875; // reward-type badge sits on the outer edge of the arc
   var sliceDeg = 36; // recomputed from the number of slices the server sends
 
   var params = new URLSearchParams(window.location.search);
@@ -111,13 +136,15 @@
   var wheel = null;
   var wheelReady = false;
   var labelEls = [];
+  var tagEls = [];
   var busy = false;
   var revealTimer = null;
   var lastAction = null; // "load" | "spin", for the retry button
   var orderUrl = null;
   var pendingReveal = null;
 
-  if (cfg.overlay) document.documentElement.classList.add("gt-spin-open");
+  mountOverlay();
+  configureClose();
 
   // ---------------------------------------------------------------- helpers
 
@@ -190,22 +217,69 @@
     });
   }
 
+  function renderOdds(state) {
+    if (!els.odds || !els.oddsLine) return;
+    var odds = state.odds;
+    if (state.rewardTypeLabels) typeLabels = state.rewardTypeLabels;
+    if (!odds || typeof odds.discountPercent !== "number") {
+      show(els.odds, false);
+      return;
+    }
+    els.oddsLine.textContent =
+      "Odds: a " +
+      odds.discountPercent +
+      "% chance of a discount code and a " +
+      odds.giftPercent +
+      "% chance of a complimentary GFJ gift.";
+    show(els.odds, true);
+  }
+
+  /**
+   * Overlay mode: reparent to <body>. A theme section carrying transform,
+   * filter or overflow becomes the containing block for position: fixed and
+   * traps the layer inside itself, which is how the theme header, title and
+   * footer stay visible. On <body> the layer covers the viewport.
+   */
+  function mountOverlay() {
+    if (!cfg.overlay) return;
+    if (root.parentElement !== document.body) document.body.appendChild(root);
+    document.documentElement.classList.add("gt-spin-open");
+  }
+
+  /** The close control always leads back to the order, never to the storefront home. */
+  function configureClose() {
+    if (!els.close) return;
+    if (orderUrl) {
+      els.close.setAttribute("href", orderUrl);
+      els.close.onclick = null;
+      show(els.close, true);
+      return;
+    }
+    // Order unknown (bad or missing token): step back to wherever the customer came from.
+    if (window.history.length > 1) {
+      els.close.setAttribute("href", "#");
+      els.close.onclick = function (e) {
+        e.preventDefault();
+        window.history.back();
+      };
+      show(els.close, true);
+    } else {
+      show(els.close, false);
+    }
+  }
+
   function setOrderUrl(url) {
     orderUrl = typeof url === "string" && /^https?:\/\//.test(url) ? url : null;
-    if (els.close) {
-      if (orderUrl) els.close.setAttribute("href", orderUrl);
-      else els.close.removeAttribute("href");
-      show(els.close, !!orderUrl);
-    }
+    configureClose();
   }
 
   // ------------------------------------------------------------------ wheel
 
   function buildWheel(slices) {
     if (wheelReady || !Array.isArray(slices) || slices.length === 0) return;
+    palette = paletteFor(slices);
     var items = slices.map(function (s, i) {
-      var p = PALETTE[i % PALETTE.length];
-      return { label: "", backgroundColor: p.bg };
+      return { label: "", backgroundColor: palette[i].bg };
     });
     wheel = new spinWheel.Wheel(els.wheel, {
       items: items,
@@ -232,8 +306,9 @@
   function buildLabels(slices) {
     var layer = els.labels;
     while (layer.firstChild) layer.removeChild(layer.firstChild);
+    tagEls = [];
     labelEls = slices.map(function (s, i) {
-      var p = PALETTE[i % PALETTE.length];
+      var p = palette[i];
       var centre = i * sliceDeg + sliceDeg / 2; // wheel angle, 0 = top, clockwise
       var rad = (centre * Math.PI) / 180;
       var label = el("div", "gt-spin__label");
@@ -248,6 +323,18 @@
       label.appendChild(svg);
       label.appendChild(el("span", "gt-spin__label-text", String(s.label || "")));
       layer.appendChild(label);
+
+      // Reward-type badge on the edge of the arc, same angle, larger radius.
+      var tag = el(
+        "span",
+        "gt-spin__tag gt-spin__tag--arc",
+        s.typeLabel || typeLabels[s.rewardType] || "",
+      );
+      tag.style.left = 50 + TAG_RADIUS * 50 * Math.sin(rad) + "%";
+      tag.style.top = 50 - TAG_RADIUS * 50 * Math.cos(rad) + "%";
+      tag.style.color = p.text;
+      layer.appendChild(tag);
+      tagEls.push(tag);
       return label;
     });
   }
@@ -262,6 +349,7 @@
     els.labels.style.transform = "rotate(" + r + "deg)";
     var counter = "translate(-50%, -50%) rotate(" + -r + "deg)";
     for (var i = 0; i < labelEls.length; i++) labelEls[i].style.transform = counter;
+    for (var j = 0; j < tagEls.length; j++) tagEls[j].style.transform = counter;
   }
 
   function tick() {
@@ -362,12 +450,14 @@
       renderGift(box, result, extras.offer || null, extras.message || null);
     } else if (result.expired) {
       box.appendChild(el("h2", "gt-spin__result-heading", "Your Spin to Win code has expired"));
+      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.discount));
       box.appendChild(el("div", "gt-spin__code", result.code || ""));
       box.appendChild(
         el("p", "gt-spin__note", result.rewardLabel + ". Expired on " + expiry + "."),
       );
     } else {
       box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.discount));
       box.appendChild(el("div", "gt-spin__code", result.code || ""));
       var copy = el(
         "button",
@@ -423,6 +513,7 @@
 
     if (gift.status === "added") {
       box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+      box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.gift));
       var what = gift.variantTitle
         ? result.rewardLabel + " (" + gift.variantTitle + ")"
         : result.rewardLabel;
@@ -441,6 +532,7 @@
       box.appendChild(img);
     }
     box.appendChild(el("h2", "gt-spin__result-heading", "You won " + result.rewardLabel + "!"));
+    box.appendChild(el("span", "gt-spin__tag gt-spin__tag--result", typeLabels.gift));
     if (offer && offer.note) box.appendChild(el("p", "gt-spin__note", offer.note));
     if (message) box.appendChild(el("p", "gt-spin__note gt-spin__note--warn", message));
 
@@ -600,6 +692,7 @@
           return sleep(delay).then(step);
         }
         setOrderUrl(s.orderUrl);
+        renderOdds(s);
         buildWheel(s.wheel);
         if (s.alreadySpun && s.result) {
           placeAt(s.result.sliceIndex);

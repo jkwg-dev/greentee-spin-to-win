@@ -25,7 +25,7 @@
     --gt-cream: {{ block.settings.color_cream | default: '#efe9dc' }};
     --gt-green: {{ block.settings.color_green | default: '#2e5a3e' }};
     --gt-gold: {{ block.settings.color_gold | default: '#c9a961' }};
-    --gt-bg: {{ block.settings.background_color | default: '#f6f3ec' }};
+    --gt-bg: {{ block.settings.background_color | default: '#fbfbfa' }};
     {% if bg_image != '' %}--gt-bg-image: url('{{ bg_image }}');{% endif %}
   "
   {{ block.shopify_attributes }}
@@ -54,6 +54,20 @@
       </div>
     </div>
 
+    <div class="gt-spin__meta" data-odds hidden>
+      <p class="gt-spin__odds" data-odds-line></p>
+      <p class="gt-spin__odds gt-spin__odds--note">
+        The size and placement of the wheel's sections do not represent the actual chances.
+      </p>
+      {%- if block.settings.rules_url != blank -%}
+        <p class="gt-spin__odds">
+          <a class="gt-spin__rules" href="{{ block.settings.rules_url | escape }}" target="_blank" rel="noopener">
+            {{ block.settings.rules_label | default: 'Full promotion rules' | escape }}
+          </a>
+        </p>
+      {%- endif -%}
+    </div>
+
     <div class="gt-spin__actions">
       <button type="button" class="gt-spin__button" data-spin hidden>
         {{ block.settings.button_label | default: 'Spin the wheel' | escape }}
@@ -80,7 +94,7 @@
       "type": "checkbox",
       "id": "overlay",
       "label": "Cover the whole page (modal style)",
-      "info": "Hides the theme header and navigation behind a full-screen overlay so the wheel is the only thing on screen.",
+      "info": "Moves the block to the top of the page as a full-screen layer over a dimmed theme, so it reads as a modal over checkout.",
       "default": true
     },
     {
@@ -119,6 +133,18 @@
       "default": "Back to your order"
     },
     {
+      "type": "url",
+      "id": "rules_url",
+      "label": "Promotion rules link",
+      "info": "Shown under the odds only when set."
+    },
+    {
+      "type": "text",
+      "id": "rules_label",
+      "label": "Rules link text",
+      "default": "Full promotion rules"
+    },
+    {
       "type": "header",
       "content": "Background"
     },
@@ -131,7 +157,7 @@
       "type": "color",
       "id": "background_color",
       "label": "Background colour",
-      "default": "#f6f3ec"
+      "default": "#fbfbfa"
     },
     {
       "type": "header",

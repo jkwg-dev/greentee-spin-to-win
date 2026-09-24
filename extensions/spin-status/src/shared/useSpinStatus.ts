@@ -94,3 +94,11 @@ export function appUrlFromSettings(settings: Record<string, unknown> | undefined
   const trimmed = raw.trim().replace(/\/+$/, "");
   return /^https?:\/\//.test(trimmed) ? trimmed : null;
 }
+
+/** Reads the optional decorative wheel image URL. Only https URLs are used; blank means none. */
+export function imageUrlFromSettings(settings: Record<string, unknown> | undefined): string | null {
+  const raw = settings?.wheel_image_url;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return /^https:\/\//.test(trimmed) ? trimmed : null;
+}

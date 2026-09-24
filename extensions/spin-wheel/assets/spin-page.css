@@ -4,13 +4,16 @@
   --gt-cream: #efe9dc;
   --gt-green: #2e5a3e;
   --gt-gold: #c9a961;
-  --gt-bg: #f6f3ec;
+  --gt-bg: #fbfbfa;
   --gt-stage: min(100vw - 3rem, 400px);
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
   color: var(--gt-navy);
   font-family: inherit;
+}
+
+.gt-spin:not(.gt-spin--overlay) {
   background: var(--gt-bg) var(--gt-bg-image, none) center / cover no-repeat;
 }
 
@@ -20,14 +23,35 @@
   box-sizing: border-box;
 }
 
-/* Overlay mode: cover the theme completely, scroll inside the overlay. */
+/*
+ * Overlay mode. The script moves this element to <body> at runtime, because a
+ * theme section with transform/filter/overflow makes position: fixed relative
+ * to that section instead of the viewport. Once on <body> the layer covers
+ * the whole viewport; the theme stays underneath as a dimmed backdrop.
+ */
 .gt-spin--overlay {
+  --gt-scrim: rgba(10, 16, 26, 0.62);
   position: fixed;
   inset: 0;
   z-index: 2147483000;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  background: var(--gt-scrim);
+}
+
+.gt-spin--overlay .gt-spin__panel {
+  min-height: 100%;
+  background: var(--gt-bg) var(--gt-bg-image, none) center / cover no-repeat;
+}
+
+@media (min-width: 640px) {
+  .gt-spin--overlay .gt-spin__panel {
+    min-height: 0;
+    margin: 4vh auto;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
 }
 
 html.gt-spin-open,
@@ -145,6 +169,60 @@ html.gt-spin-open body {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Reward type chip on each slice: quiet, the reward name stays dominant. */
+.gt-spin__tag {
+  display: inline-block;
+  margin-top: 0.35em;
+  padding: 0.15em 0.55em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 0.8;
+}
+
+/* On the wheel: pinned to the arc edge, upright, never wrapping. */
+.gt-spin__tag--arc {
+  position: absolute;
+  margin: 0;
+  padding: 0.12em 0.5em;
+  font-size: calc(var(--gt-stage) * 0.024);
+  white-space: nowrap;
+  opacity: 0.9;
+  will-change: transform;
+}
+
+.gt-spin__tag--result {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+/* Odds disclosure: small and secondary. */
+.gt-spin__meta {
+  margin: -0.25rem auto 1rem;
+  max-width: 34ch;
+}
+
+.gt-spin__odds {
+  margin: 0.2rem 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  opacity: 0.75;
+}
+
+.gt-spin__odds--note {
+  opacity: 0.6;
+}
+
+.gt-spin__rules {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .gt-spin__hub {

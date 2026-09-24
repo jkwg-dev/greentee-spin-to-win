@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CODE_FORMAT,
+  REWARD_TYPE_LABELS,
   SLICES,
   assertRewardTable,
+  rewardOdds,
   validateRewardTable,
   type Slice,
 } from "~/config/campaign";
@@ -59,6 +61,21 @@ describe("reward table", () => {
       SLICES.filter((s) => s.rewardType === type).reduce((a, s) => a + s.probability, 0);
     expect(by("discount")).toBe(75);
     expect(by("gift")).toBe(25);
+  });
+
+  it("derives the displayed odds from the table: 75% discount, 25% gift", () => {
+    const odds = rewardOdds();
+    expect(odds).toEqual({ discountPercent: 75, giftPercent: 25 });
+    expect(odds.discountPercent + odds.giftPercent).toBe(100);
+    // Sanity: the derivation really follows the table, not a constant.
+    const skewed = SLICES.map((s) =>
+      s.index === 1 ? { ...s, probability: 5 } : s.index === 2 ? { ...s, probability: 24 } : s,
+    );
+    expect(rewardOdds(skewed)).toEqual({ discountPercent: 55, giftPercent: 45 });
+  });
+
+  it("names both reward kinds for the chips", () => {
+    expect(REWARD_TYPE_LABELS).toEqual({ discount: "Discount", gift: "Free gift" });
   });
 
   it("rejects a table that does not sum to 100", () => {

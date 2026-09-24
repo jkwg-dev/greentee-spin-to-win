@@ -88,7 +88,9 @@ pnpm cleanup:test-data -- --apply # delete Spin TEST discounts, clear test spin 
 Both targets call `POST /api/spin/status` with the extension session token and share one
 result card, so the two pages can never disagree about a reward. The extension reads the app
 server URL from its `app_url` setting: set it in the checkout editor (Thank you page) and in the
-customer accounts editor (Order status page) after the first deploy. Network access must be
+customer accounts editor (Order status page) after the first deploy. An optional
+`wheel_image_url` setting adds a small decorative wheel image beside the Thank you banner text,
+capped so the spin button stays above the fold on a phone; leave it blank for none. Network access must be
 allowed once in the Dev Dashboard under API access.
 
 The Thank you page shows three states: not eligible (encouraging banner), eligible (button
@@ -100,9 +102,13 @@ start from the Thank you page.
 ## Spin page (theme app extension)
 
 Add the "Spin to Win wheel" app block to the storefront page that `SPIN_PAGE_URL` points at.
-By default the block renders as a fixed full-screen overlay covering the theme header and
-navigation, so the page reads as a modal with its own URL. A background image, colours and copy
-are block settings.
+By default the block renders as a full-screen layer: at load it moves itself to `<body>` (a
+theme section carrying `transform`, `filter` or `overflow` would otherwise trap a fixed layer
+inside itself), covers the viewport above every theme element, locks scroll behind it, and dims
+the theme underneath as a backdrop, so the page reads as a modal opened over checkout rather
+than a navigation away from it. The close control returns to the order's own status page. A
+background image, colours, copy and the promotion rules URL are block settings; the rules link
+renders only when the URL is set.
 
 The page needs `?token=` from the Thank you page. It calls `/apps/spin/state` (invalid, expired
 or missing token: a plain message and nothing else; stored result: shown without spinning) and
