@@ -143,6 +143,13 @@ unfulfilled at spin time. Do not build a fulfilled-order fallback path.
 ```
 Thank you page (Checkout UI extension, purchase.thank-you.block.render)
   -> POST {APP_URL}/api/spin/status   { orderId }   (Bearer: extension session token)
+     orderId arrives in three shapes and is normalised to the numeric ID:
+       gid://shopify/OrderIdentity/<id>  thank you target (its typings say
+                                         Order/<id>; that is wrong)
+       gid://shopify/Order/<id>          order status target
+       <id>                              scripts and tests
+     The outcome HMAC runs on the normalised ID, so the shape can never
+     change the reward. Anything else is a 400 naming what it received.
      returns { campaignOpen, eligible, alreadySpun, result, spinUrl }
   -> if eligible and not spun: Button links to spinUrl (signed token)
 
@@ -224,7 +231,8 @@ There is no database and no compare and swap on metafields, so two concurrent re
 both see an empty metafield. The fix is determinism plus a natural unique key.
 
 1. **The outcome is derived, not rolled.** Compute
-   `hmacSha256(SPIN_SECRET, String(orderId))`, take the first 8 hex characters as an integer,
+   `hmacSha256(SPIN_SECRET, normalizeOrderId(orderId))`, take the first 8 hex characters as an
+   integer,
    divide by 2^32 (0x100000000, so the range is the half-open `[0, 1)`; dividing by 0xFFFFFFFF
    would allow exactly 1.0), and map it onto the cumulative slice table. The order ID is
    normalised to its numeric form first so a GID and a bare ID derive the same outcome.

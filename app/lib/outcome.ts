@@ -21,7 +21,34 @@ const ROLL_BYTES = { start: 0, end: 4 } as const;
 const CODE_BYTES = { start: 4, end: 4 + CODE_FORMAT.discountLength } as const;
 const GIFT_BYTES = { start: CODE_BYTES.end, end: CODE_BYTES.end + CODE_FORMAT.giftLength } as const;
 
-const ORDER_GID = /^gid:\/\/shopify\/Order\/(\d+)$/;
+/**
+ * Order identifiers arrive in three shapes and must all reduce to the same
+ * numeric ID, because the outcome HMAC is computed over it:
+ *
+ * - `gid://shopify/Order/<id>` from the order status target
+ * - `gid://shopify/OrderIdentity/<id>` from the thank you target. Its own
+ *   typings claim `gid://shopify/Order/...`, which is wrong; the docs note
+ *   the value "becomes the Order object ID in the Admin API", so the numeric
+ *   suffix is the order's ID and only the type prefix differs.
+ * - a bare numeric ID, used by scripts and tests
+ *
+ * Any other shape is rejected rather than guessed at.
+ */
+const ORDER_GID = /^gid:\/\/shopify\/(?:Order|OrderIdentity)\/(\d+)$/;
+
+/** Thrown when an order identifier is not one of the accepted shapes. */
+export class OrderIdError extends Error {
+  /** What arrived, truncated, so it is safe to put in a response or a log. */
+  readonly received: string;
+  static readonly expected =
+    "a numeric order ID, gid://shopify/Order/<id>, or gid://shopify/OrderIdentity/<id>";
+  constructor(received: string) {
+    const shown = received.length > 120 ? `${received.slice(0, 120)}...` : received;
+    super(`Unrecognised order id ${JSON.stringify(shown)}. Expected ${OrderIdError.expected}.`);
+    this.name = "OrderIdError";
+    this.received = shown;
+  }
+}
 
 /**
  * Normalises an order identifier to its numeric string form so that a GID
@@ -32,7 +59,7 @@ export function normalizeOrderId(orderId: string | number): string {
   const gid = ORDER_GID.exec(raw);
   if (gid) return gid[1];
   if (/^\d+$/.test(raw)) return raw;
-  throw new Error(`Unrecognised order id: ${raw}`);
+  throw new OrderIdError(raw);
 }
 
 export function orderGid(orderId: string | number): string {

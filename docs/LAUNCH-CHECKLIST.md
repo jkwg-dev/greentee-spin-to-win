@@ -53,6 +53,10 @@ link again (or the order status page) so the app re-reads it.
 - [ ] Order at $299.99 and at $300.00 with a non-test customer: the first is ineligible, the
       second is not shown at all while mode is `test` (only testers see the wheel).
 - [ ] Test order: Thank you page shows the spin banner on desktop and on a phone.
+- [ ] In the logs for that order, `spin.eligibility` shows an `orderName` matching the real order
+      number in admin. The thank you page identifies the order as
+      `gid://shopify/OrderIdentity/<id>` and the app treats the numeric part as the order's ID;
+      a matching order name confirms that, and a stuck "just a moment" banner would disprove it.
 - [ ] Spin lands, code is shown; refresh the spin page shows the same result; Thank you page
       and Order status page both show the code.
 - [ ] Code applies at checkout only to the matching regular priced collection, once.

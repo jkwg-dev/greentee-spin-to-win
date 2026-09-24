@@ -9,6 +9,7 @@ import {
 import { parseSpinResult } from "./spin-result";
 import {
   ForceSliceError,
+  OrderIdError,
   deriveDiscountCode,
   deriveGiftReference,
   deriveOutcome,
@@ -125,13 +126,36 @@ describe("digest and roll", () => {
     expect(a.equals(c)).toBe(false);
   });
 
-  it("treats a GID and a numeric ID as the same order", () => {
-    expect(normalizeOrderId("gid://shopify/Order/987")).toBe("987");
-    expect(normalizeOrderId(987)).toBe("987");
-    expect(
-      outcomeDigest(SECRET, "gid://shopify/Order/987").equals(outcomeDigest(SECRET, 987)),
-    ).toBe(true);
-    expect(() => normalizeOrderId("gid://shopify/Product/1")).toThrow(/Unrecognised/);
+  it("reduces all three identifier shapes to the same numeric ID", () => {
+    // The thank you target sends OrderIdentity, the order status target sends
+    // Order, scripts send a bare number. All are the same order.
+    for (const id of [
+      "gid://shopify/Order/987",
+      "gid://shopify/OrderIdentity/987",
+      "987",
+      987,
+      "  gid://shopify/OrderIdentity/987  ",
+    ]) {
+      expect(normalizeOrderId(id)).toBe("987");
+    }
+  });
+
+  it("rejects an unrecognised identifier and reports what it received", () => {
+    expect(() => normalizeOrderId("gid://shopify/Product/1")).toThrow(OrderIdError);
+    try {
+      normalizeOrderId("gid://shopify/Product/1");
+    } catch (e) {
+      expect((e as OrderIdError).received).toBe("gid://shopify/Product/1");
+      expect((e as Error).message).toMatch(/Expected a numeric order ID/);
+    }
+    expect(() => normalizeOrderId("")).toThrow(OrderIdError);
+    // A hostile value is truncated before it reaches a response or a log.
+    const long = "x".repeat(500);
+    try {
+      normalizeOrderId(long);
+    } catch (e) {
+      expect((e as OrderIdError).received.length).toBeLessThanOrEqual(123);
+    }
   });
 
   it("uses the first 8 hex characters divided by 2^32", () => {
@@ -232,5 +256,40 @@ describe("resolveForcedSlice", () => {
     for (const bad of [0, 11, -1, 1.5, "abc", "", null, undefined, {}]) {
       expect(() => resolveForcedSlice(bad)).toThrow(ForceSliceError);
     }
+  });
+});
+
+describe("identifier shape cannot change the outcome", () => {
+  // The HMAC is computed over the normalised numeric ID, so the thank you page
+  // and the order status page must derive the same reward for the same order.
+  const SHAPES = (id: number) => [
+    String(id),
+    `gid://shopify/Order/${id}`,
+    `gid://shopify/OrderIdentity/${id}`,
+  ];
+
+  it("derives an identical slice, code and gift reference from every shape", () => {
+    for (let id = 1; id <= 400; id++) {
+      const [first, ...rest] = SHAPES(id).map((v) => deriveOutcome(SECRET, v));
+      for (const other of rest) {
+        expect(other.slice.index).toBe(first.slice.index);
+        expect(other.discountCode).toBe(first.discountCode);
+        expect(other.giftReference).toBe(first.giftReference);
+        expect(other.roll).toBe(first.roll);
+      }
+    }
+  });
+
+  it("derives identical test-mode codes from every shape", () => {
+    const codes = SHAPES(8363789484222).map(
+      (v) => deriveOutcome(SECRET, v, { testMode: true }).discountCode,
+    );
+    expect(new Set(codes).size).toBe(1);
+    expect(codes[0].startsWith("GT-TEST-")).toBe(true);
+  });
+
+  it("produces the same digest for every shape", () => {
+    const digests = SHAPES(555).map((v) => outcomeDigest(SECRET, v).toString("hex"));
+    expect(new Set(digests).size).toBe(1);
   });
 });

@@ -11,7 +11,7 @@ import { getAdminClient } from "~/lib/admin.server";
 import { json, methodNotAllowed, preflight, readJsonBody } from "~/lib/http.server";
 import { log } from "~/lib/log.server";
 import { logged } from "~/lib/request-log.server";
-import { normalizeOrderId } from "~/lib/outcome";
+import { OrderIdError, normalizeOrderId } from "~/lib/outcome";
 import { bearerToken, verifySessionToken } from "~/lib/session-token.server";
 import { SpinError, getSpinStatus } from "~/lib/spin.server";
 
@@ -50,12 +50,26 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const body = await readJsonBody(request);
+  const rawOrderId = body?.orderId;
+  if (rawOrderId === undefined || rawOrderId === null || rawOrderId === "") {
+    log.warn("status.bad_request", { reason: "missing_order_id" });
+    return json(
+      { error: "bad_request", message: `orderId is required: ${OrderIdError.expected}.` },
+      { status: 400, cors: true },
+    );
+  }
   let orderId: string;
   try {
-    orderId = normalizeOrderId(String(body?.orderId ?? ""));
-  } catch {
+    orderId = normalizeOrderId(String(rawOrderId));
+  } catch (error) {
+    const received =
+      error instanceof OrderIdError ? error.received : String(rawOrderId).slice(0, 120);
+    log.warn("status.bad_request", { reason: "unrecognised_order_id", received });
     return json(
-      { error: "bad_request", message: "orderId is required" },
+      {
+        error: "bad_request",
+        message: `orderId is not a recognised order identifier. Received ${JSON.stringify(received)}, expected ${OrderIdError.expected}.`,
+      },
       { status: 400, cors: true },
     );
   }

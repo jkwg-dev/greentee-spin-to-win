@@ -15,6 +15,19 @@ describe("spin token", () => {
     });
   });
 
+  it("signs the same order whatever identifier shape it is given", () => {
+    const tokens = [
+      "8363789484222",
+      "gid://shopify/Order/8363789484222",
+      "gid://shopify/OrderIdentity/8363789484222",
+    ].map((id) => createSpinToken(SECRET, id, 3600, NOW));
+    expect(new Set(tokens).size).toBe(1);
+    expect(verifySpinToken(SECRET, tokens[0], NOW)).toMatchObject({
+      ok: true,
+      orderId: "8363789484222",
+    });
+  });
+
   it("rejects a tampered payload", () => {
     const token = createSpinToken(SECRET, 123, 3600, NOW);
     const [v, payload, sig] = token.split(".");
