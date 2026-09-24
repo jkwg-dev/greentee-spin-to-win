@@ -5,3 +5,7 @@ pnpm-lock.yaml
 extensions/*/assets/spin-wheel.js
 CLAUDE.md
 extensions/*/dist
+
+# Hand-written operator docs. Prettier reflows these markdown tables
+# non-idempotently (write -> check -> write keeps changing them).
+docs/

@@ -35,6 +35,17 @@ shopify app config link   # once, to bind to the Dev Dashboard app
 pnpm dev                  # shopify app dev
 ```
 
+## Deploying to Vercel
+
+The framework preset must be **React Router**. `vercel.json` pins it. The
+`@vercel/react-router` preset in `react-router.config.ts` does not produce the deployable
+output by itself: it emits server bundles plus `.vercel/react-router-build-result.json`, which
+Vercel's React Router builder reads to create the function. With the framework unset or `null`,
+that builder never runs, the build still succeeds, and every route returns 404.
+
+`regions` in `vercel.json` sets where functions run, not where the build runs. See
+`docs/LAUNCH-CHECKLIST.md` for the full settings table.
+
 ## Authentication
 
 The app serves one store and uses the client credentials grant: it exchanges its client ID and

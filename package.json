@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "shopify app dev",
     "build": "react-router build",
-    "start": "react-router-serve ./build/server/index.js",
+    "start": "node scripts/serve.mjs",
     "deploy": "shopify app deploy",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",

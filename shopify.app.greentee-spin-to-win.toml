@@ -1,20 +1,42 @@
-# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+# Shopify app configuration (config as code). This is the linked config the CLI created with
+# `shopify app config link`; it holds the real client_id. `shopify app deploy` PUSHES this file
+# and overwrites the Dev Dashboard, so it must be complete.
+#
+# Replace every REPLACE.vercel.app below with the Vercel production hostname, then run
+# `shopify app deploy`. There must be exactly one shopify.app*.toml in this repo: a second one
+# silently deploys the wrong URLs.
 
 client_id = "08e43076c245f84ff0249ba721305eec"
 name = "greentee-spin-to-win"
-application_url = "https://example.com"
-embedded = true
+handle = "greentee-spin-to-win"
+application_url = "https://REPLACE.vercel.app"
+# No admin UI. The app serves API endpoints, an app proxy and extensions only.
+embedded = false
 
 [build]
 automatically_update_urls_on_dev = true
+# Push this file's contents on deploy rather than only the extensions.
 include_config_on_deploy = true
 
-[webhooks]
-api_version = "2026-10"
-
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,write_discounts,write_order_edits,write_orders"
+# write_orders: order lookup, the greentee_spin.result order metafield (metafieldsSet needs
+# write on the owner resource; write includes read), and tagsAdd / tagsRemove for the gift tags.
+# write_discounts: discountCodeBasicCreate, and reading a code back on a duplicate.
+# write_order_edits: orderEditBegin / AddVariant / AddLineItemDiscount / Commit for gifts.
+# read_products: gift variants, availability and inventory quantities.
+scopes = "write_orders,write_discounts,write_order_edits,read_products"
+use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = ["https://REPLACE.vercel.app/auth/callback"]
+
+# Required. Without this block the storefront spin page cannot reach the app and the whole
+# spin flow fails; the CLI does not add it for you.
+[app_proxy]
+# Storefront https://{shop}/apps/spin/* -> {application_url}/apps/spin/*
+url = "https://REPLACE.vercel.app/apps/spin"
+prefix = "apps"
+subpath = "spin"
+
+[webhooks]
+api_version = "2026-07"
