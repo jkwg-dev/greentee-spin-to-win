@@ -286,7 +286,7 @@ describe("spin page: spin and results", () => {
     expect(primary.getAttribute("href")).toBe(
       "https://shop.greenteegolfshop.com/discount/" +
         encodeURIComponent(RESULT.code) +
-        "?redirect=%2Fcollections%2Faccessories",
+        "?redirect=%2Fcollections%2Faccessories-regular-priced",
     );
     // Meta lines with the short date.
     const meta = [...result.querySelectorAll(".gt-spin__meta-text")].map((m) => m.textContent);

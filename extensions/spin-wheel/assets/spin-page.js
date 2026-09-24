@@ -103,9 +103,9 @@
    */
   var SHOP_ORIGIN = "https://shop.greenteegolfshop.com";
   var REWARD_LINKS = {
-    clubs_10: { category: "clubs", path: "/collections/clubs" },
-    accessories_15: { category: "accessories", path: "/collections/accessories" },
-    apparel_30: { category: "apparel", path: "/collections/apparel" },
+    clubs_10: { category: "clubs", path: "/collections/clubs-regular-priced" },
+    accessories_15: { category: "accessories", path: "/collections/accessories-regular-priced" },
+    apparel_30: { category: "apparel", path: "/collections/apparel-regular-priced" },
   };
   var FALLBACK_LINK = { category: "now", path: "/" };
 
