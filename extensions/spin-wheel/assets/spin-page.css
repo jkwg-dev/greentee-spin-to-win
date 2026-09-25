@@ -337,8 +337,8 @@ html.gt-spin-open body {
 /* --------------------------------------------------------------- result */
 .gt-spin__result {
   margin: 16px auto 0;
-  padding: 20px 16px 22.4px;
-  width: min(100%, 384px);
+  padding: 20px 32px 22.4px;
+  width: min(100%, 480px);
   border: 1px solid rgba(27, 42, 61, 0.2);
   border-radius: 12px;
   background: #fff;
@@ -429,9 +429,6 @@ html.gt-spin-open body {
   display: block;
   width: 100%;
   margin-top: 4px;
-  /* "Shop accessories with code applied" must stay on one line at 375px. */
-  padding-inline: 12px;
-  font-size: 15.2px;
 }
 
 .gt-spin__meta-text {

@@ -291,7 +291,7 @@ describe("spin page: spin and results", () => {
     expect(p.el("[data-odds]").hidden).toBe(true);
     // Primary: apply the code and land on the matching collection.
     const primary = result.querySelector<HTMLAnchorElement>("a.gt-spin__primary")!;
-    expect(primary.textContent).toBe("Shop accessories with code applied");
+    expect(primary.textContent).toBe("Shop with code applied");
     expect(primary.getAttribute("href")).toBe(
       "https://shop.greenteegolfshop.com/discount/" +
         encodeURIComponent(RESULT.code) +

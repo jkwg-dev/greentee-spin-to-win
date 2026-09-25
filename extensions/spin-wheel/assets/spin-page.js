@@ -103,22 +103,23 @@
    */
   var SHOP_ORIGIN = "https://shop.greenteegolfshop.com";
   var REWARD_LINKS = {
-    clubs_10: { category: "clubs", path: "/collections/clubs-regular-priced" },
-    accessories_15: { category: "accessories", path: "/collections/accessories-regular-priced" },
-    apparel_30: { category: "apparel", path: "/collections/apparel-regular-priced" },
+    clubs_10: "/collections/clubs-regular-priced",
+    accessories_15: "/collections/accessories-regular-priced",
+    apparel_30: "/collections/apparel-regular-priced",
   };
-  var FALLBACK_LINK = { category: "now", path: "/" };
+  var FALLBACK_PATH = "/";
+  var SHOP_LABEL = "Shop with code applied";
 
   function discountLink(result) {
-    var link = REWARD_LINKS[result.rewardKey] || FALLBACK_LINK;
+    var path = REWARD_LINKS[result.rewardKey] || FALLBACK_PATH;
     return {
       href:
         SHOP_ORIGIN +
         "/discount/" +
         encodeURIComponent(result.code || "") +
         "?redirect=" +
-        encodeURIComponent(link.path),
-      label: "Shop " + link.category + " with code applied",
+        encodeURIComponent(path),
+      label: SHOP_LABEL,
     };
   }
 
