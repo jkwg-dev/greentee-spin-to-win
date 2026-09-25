@@ -19,7 +19,6 @@ function blockMarkup(): string {
   return block
     .replace(/\{\{ block\.settings\.(\w+) \| default: '([^']*)' \| escape \}\}/g, "$2")
     .replace(/\{\{ block\.settings\.(\w+) \| default: '([^']*)' \}\}/g, "$2")
-    .replace(/\{\{ block\.settings\.intro \| escape \}\}/g, "Intro copy")
     .replace(/\{\{ block\.settings\.heading \| escape \}\}/g, "Spin to Win")
     .replace(/\{\{ block\.settings\.eyebrow \| escape \}\}/g, "Eyebrow")
     .replace(/\{\{ block\.settings\.overlay \}\}/g, "true")
@@ -336,7 +335,9 @@ describe("spin page: spin and results", () => {
       url: "/pages/spin-to-win?token=ok",
       state: { status: 200, body: ELIGIBLE },
     });
-    expect(p.status()).toBe("Intro copy");
+    // No intro copy: the status line stays empty and hidden before the spin.
+    expect(p.status()).toBe("");
+    expect(p.el("[data-status]").hidden).toBe(true);
     expect(dom().querySelectorAll(".gt-spin__label")).toHaveLength(9);
     p.el("[data-spin]").click();
     await flush();

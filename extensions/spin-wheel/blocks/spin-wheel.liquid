@@ -20,7 +20,6 @@
   data-overlay="{{ block.settings.overlay }}"
   data-css="{{ css_url }}"
   data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
-  data-intro="{{ block.settings.intro | escape }}"
   data-back-label="{{ block.settings.back_label | default: 'Back to your order' | escape }}"
   style="
     --gtsw-navy: {{ block.settings.color_navy | default: '#1b2a3d' }};
@@ -114,13 +113,6 @@
       "id": "heading",
       "label": "Heading",
       "default": "Spin to Win"
-    },
-    {
-      "type": "textarea",
-      "id": "intro",
-      "label": "Intro (shown before the spin)",
-      "info": "Leave blank for none.",
-      "default": ""
     },
     {
       "type": "text",

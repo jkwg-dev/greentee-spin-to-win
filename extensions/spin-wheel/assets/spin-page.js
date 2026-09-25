@@ -43,7 +43,6 @@
 
   var cfg = {
     proxyPath: (root.getAttribute("data-proxy-path") || "/apps/spin").replace(/\/+$/, ""),
-    intro: root.getAttribute("data-intro") || "",
     backLabel: root.getAttribute("data-back-label") || "Back to your order",
     overlay: root.getAttribute("data-overlay") === "true",
     colors: {
@@ -134,7 +133,7 @@
     invalid:
       "This spin link is invalid or has expired. Your reward, if you have one, is on your order status page.",
     closed: "Spin to Win is closed right now. Thanks for shopping with GreenTee!",
-    ready: cfg.intro,
+    ready: "", // no copy above the wheel; the heading and the odds line say enough
     spinning: "Spinning…",
     loadFailed: "We couldn't load your spin. Please try again.",
     spinFailed: "We couldn't complete your spin. Nothing was lost. Press Try again.",
