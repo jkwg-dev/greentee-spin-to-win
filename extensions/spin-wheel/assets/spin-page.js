@@ -277,7 +277,7 @@
     els.oddsLine.textContent =
       "Odds: a " +
       odds.discountPercent +
-      "% chance of a discount code and a " +
+      "% chance of a discount code for next purchase and a " +
       odds.giftPercent +
       "% chance of a complimentary GFJ gift.";
     show(els.odds, true);

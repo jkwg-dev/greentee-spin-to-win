@@ -767,7 +767,7 @@ describe("spin page: colour, chips, odds and overlay", () => {
     });
     expect(p.el("[data-odds]").hidden).toBe(false);
     expect(p.el("[data-odds-line]").textContent).toBe(
-      "Odds: a 60% chance of a discount code and a 40% chance of a complimentary GFJ gift.",
+      "Odds: a 60% chance of a discount code for next purchase and a 40% chance of a complimentary GFJ gift.",
     );
     expect(p.el("[data-odds]").textContent).toContain("do not represent the actual chances");
   });
