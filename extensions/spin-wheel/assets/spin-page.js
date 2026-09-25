@@ -108,7 +108,7 @@
     apparel_30: "/collections/apparel-regular-priced",
   };
   var FALLBACK_PATH = "/";
-  var SHOP_LABEL = "Shop with code applied";
+  var SHOP_LABEL = "Shop with discount";
 
   function discountLink(result) {
     var path = REWARD_LINKS[result.rewardKey] || FALLBACK_PATH;
