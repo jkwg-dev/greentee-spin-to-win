@@ -93,7 +93,11 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
         Shop with discount
       </s-button>
       <Meta
-        lines={[`Valid until ${expiry} · One-time use`, "Also saved in your confirmation email."]}
+        lines={
+          surface === "thank-you"
+            ? [`Valid until ${expiry} · One-time use`, "Also on your order status page."]
+            : [`Valid until ${expiry} · One-time use`]
+        }
       />
     </Card>
   );

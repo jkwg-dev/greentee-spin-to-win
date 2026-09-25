@@ -139,7 +139,7 @@
     spinFailed: "We couldn't complete your spin. Nothing was lost. Press Try again.",
     stillPending: "Your order is still being confirmed. Please try again in a moment.",
     forceDenied: "That option isn't available. Press Try again to spin.",
-    keepSafe: "Also saved in your confirmation email.",
+    keepSafe: "Also on your order status page.",
     giftIntro: "It's on us. Added to this order at no charge.",
     giftConfirm: "Add to my order",
     giftAdding: "Adding to your order…",

@@ -365,7 +365,7 @@ describe("spin page: spin and results", () => {
     const meta = [...result.querySelectorAll(".gt-spin__meta-text")].map((m) => m.textContent);
     expect(meta).toEqual([
       "Valid until Nov 2, 2026 · One-time use",
-      "Also saved in your confirmation email.",
+      "Also on your order status page.",
     ]);
     // Back is a plain text link, not a button.
     const back = result.querySelector<HTMLAnchorElement>("a.gt-spin__back-link")!;
