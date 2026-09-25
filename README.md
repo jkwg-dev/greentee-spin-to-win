@@ -107,7 +107,10 @@ At load the block moves itself into a shadow root on a host element it appends t
 with its own `<link>` to `spin-page.css`. Theme CSS cannot reach into the shadow tree, the host
 carries `all: initial` so nothing inherits across the boundary, the root sets font, size, colour
 and background explicitly, and every size in the stylesheet is in px (the theme controls the
-root font-size, so rem would scale with it). The result is the same on every theme and matches
+root font-size, so rem would scale with it). Custom properties are the one thing that still
+crosses the boundary, so every one the sheet reads is prefixed `--gtsw-` and declared on
+`:host`; a test asserts that and that no `var()` carries a fallback. The panel colour itself is
+the block's "Background colour" setting in the theme editor, written inline on the root. The result is the same on every theme and matches
 the dev preview. Placing the host on `<body>` also matters for the overlay: a theme section
 carrying `transform`, `filter` or `overflow` would otherwise trap a fixed layer inside itself.
 By default the block renders as a full-screen layer that covers the viewport above every theme

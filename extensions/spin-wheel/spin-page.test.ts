@@ -194,6 +194,69 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("spin page: theme isolation", () => {
+  const CSS = fs.readFileSync(path.join(DIR, "assets/spin-page.css"), "utf8");
+
+  it("uses only prefixed custom properties, all declared on :host", () => {
+    // Custom properties only: a BEM modifier like .gt-spin--overlay has a word char before "--".
+    const names = new Set(CSS.match(/(?<![\w-])--[a-z][\w-]*/gi) ?? []);
+    for (const n of names) expect(n, n).toMatch(/^--gtsw-/);
+    const hostRule = CSS.match(/:host,\s*\.gt-spin\s*\{([^}]*)\}/)?.[1] ?? "";
+    const declared = new Set(hostRule.match(/--gtsw-[\w-]+(?=\s*:)/g) ?? []);
+    const used = new Set(
+      CSS.match(/var\(\s*(--gtsw-[\w-]+)/g)?.map((m) => m.replace(/var\(\s*/, "")),
+    );
+    expect(used.size).toBeGreaterThan(0);
+    for (const u of used) expect(declared.has(u), `${u} must be declared on :host`).toBe(true);
+    // No var() may fall back to a theme value: every reference resolves inside the sheet.
+    for (const u of used) expect(CSS).not.toMatch(new RegExp(`var\\(\\s*${u}\\s*,`));
+    // The inline declarations from the block settings use the same names.
+    const inline = new Set(LIQUID.match(/--gtsw-[\w-]+(?=\s*:)/g) ?? []);
+    for (const i of inline) expect(declared.has(i), `${i} set inline but not on :host`).toBe(true);
+  });
+
+  it("ignores conflicting variables set on the document", async () => {
+    const html = document.documentElement;
+    for (const n of [
+      "--color-background",
+      "--gt-bg",
+      "--gtsw-bg",
+      "--gtsw-navy",
+      "--gtsw-cream",
+      "--background",
+    ])
+      html.style.setProperty(n, "red");
+    try {
+      const p = await mount({
+        url: "/pages/spin-to-win?token=ok",
+        state: { status: 200, body: ELIGIBLE },
+      });
+      const root = p.el("[data-gt-spin]");
+      // The root pins every colour itself, so the document's values cannot win.
+      expect(root.style.getPropertyValue("--gtsw-bg").trim()).toBe("#fbfbfa");
+      expect(root.style.getPropertyValue("--gtsw-navy").trim()).toBe("#1b2a3d");
+      const items = p.wheel()!.items as Array<{ backgroundColor: string }>;
+      const bgs = new Set(items.map((i) => i.backgroundColor.toLowerCase()));
+      expect(bgs.has("red")).toBe(false);
+      expect(bgs.has("#efe9dc")).toBe(true);
+      expect(bgs.has("#1b2a3d")).toBe(true);
+    } finally {
+      html.removeAttribute("style");
+    }
+  });
+
+  it("puts the spin button above the odds text", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    const spin = p.el("[data-spin]");
+    const odds = p.el("[data-odds]");
+    expect(spin.compareDocumentPosition(odds) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(odds.hidden).toBe(false);
+  });
+});
+
 describe("spin page: token gate", () => {
   it("shows a plain message and nothing else without a token", async () => {
     const p = await mount({ url: "/pages/spin-to-win", state: { status: 200, body: ELIGIBLE } });

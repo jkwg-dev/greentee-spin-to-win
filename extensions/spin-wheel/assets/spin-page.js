@@ -47,10 +47,10 @@
     backLabel: root.getAttribute("data-back-label") || "Back to your order",
     overlay: root.getAttribute("data-overlay") === "true",
     colors: {
-      navy: cssVar("--gt-navy", "#1b2a3d"),
-      cream: cssVar("--gt-cream", "#efe9dc"),
-      green: cssVar("--gt-green", "#2e5a3e"),
-      gold: cssVar("--gt-gold", "#c9a961"),
+      navy: cssVar("--gtsw-navy", "#1b2a3d"),
+      cream: cssVar("--gtsw-cream", "#efe9dc"),
+      green: cssVar("--gtsw-green", "#2e5a3e"),
+      gold: cssVar("--gtsw-gold", "#c9a961"),
     },
   };
 

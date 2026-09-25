@@ -11,19 +11,32 @@
   display: block;
 }
 
+/*
+ * Custom properties are the one thing that crosses a shadow boundary and that
+ * `all: initial` does not reset. Every property this sheet reads is therefore
+ * declared here under a prefix no theme uses, so a var() can never resolve to
+ * a theme value. `.gt-spin` repeats them for the no-shadow fallback; the block
+ * settings override the colours inline on the root.
+ */
+:host,
 .gt-spin {
-  --gt-navy: #1b2a3d;
-  --gt-cream: #efe9dc;
-  --gt-green: #2e5a3e;
-  --gt-gold: #c9a961;
-  --gt-bg: #fbfbfa;
-  --gt-stage: min(100vw - 48px, 400px);
+  --gtsw-navy: #1b2a3d;
+  --gtsw-cream: #efe9dc;
+  --gtsw-green: #2e5a3e;
+  --gtsw-gold: #c9a961;
+  --gtsw-bg: #fbfbfa;
+  --gtsw-bg-image: none;
+  --gtsw-scrim: #000;
+  --gtsw-stage: min(100vw - 48px, 400px);
+}
+
+.gt-spin {
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
   /* Explicit, not inherited: storefront theme CSS must not restyle the modal. */
-  color: var(--gt-navy);
-  background: var(--gt-bg);
+  color: var(--gtsw-navy);
+  background: var(--gtsw-bg);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
@@ -42,7 +55,7 @@
 }
 
 .gt-spin:not(.gt-spin--overlay) {
-  background: var(--gt-bg) var(--gt-bg-image, none) center / cover no-repeat;
+  background: var(--gtsw-bg) var(--gtsw-bg-image) center / cover no-repeat;
 }
 
 .gt-spin *,
@@ -60,19 +73,18 @@
  * "you left checkout", so nothing of the theme is shown.
  */
 .gt-spin--overlay {
-  --gt-scrim: #000;
   position: fixed;
   inset: 0;
   z-index: 2147483000;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  background: var(--gt-scrim);
+  background: var(--gtsw-scrim);
 }
 
 .gt-spin--overlay .gt-spin__panel {
   min-height: 100%;
-  background: var(--gt-bg) var(--gt-bg-image, none) center / cover no-repeat;
+  background: var(--gtsw-bg) var(--gtsw-bg-image) center / cover no-repeat;
 }
 
 @media (min-width: 640px) {
@@ -107,7 +119,7 @@ html.gt-spin-open body {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   text-decoration: none;
   font-size: 28px;
   line-height: 1;
@@ -133,6 +145,7 @@ html.gt-spin-open body {
 }
 
 .gt-spin__status {
+  white-space: pre-line; /* the intro setting may carry a line break */
   margin: 8px auto 12px;
   max-width: 36ch;
   font-size: 15.2px;
@@ -146,8 +159,8 @@ html.gt-spin-open body {
 /* ---------------------------------------------------------------- wheel */
 .gt-spin__stage {
   position: relative;
-  width: var(--gt-stage);
-  height: var(--gt-stage);
+  width: var(--gtsw-stage);
+  height: var(--gtsw-stage);
   margin: 24px auto 20px;
 }
 
@@ -162,7 +175,7 @@ html.gt-spin-open body {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 3px solid var(--gt-gold);
+  border: 3px solid var(--gtsw-gold);
   pointer-events: none;
   z-index: 3;
 }
@@ -177,12 +190,12 @@ html.gt-spin-open body {
 
 .gt-spin__label {
   position: absolute;
-  width: calc(var(--gt-stage) * 0.22);
+  width: calc(var(--gtsw-stage) * 0.22);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.2em;
-  font-size: calc(var(--gt-stage) * 0.03);
+  font-size: calc(var(--gtsw-stage) * 0.03);
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0.04em;
@@ -192,8 +205,8 @@ html.gt-spin-open body {
 }
 
 .gt-spin__label svg {
-  width: calc(var(--gt-stage) * 0.07);
-  height: calc(var(--gt-stage) * 0.07);
+  width: calc(var(--gtsw-stage) * 0.07);
+  height: calc(var(--gtsw-stage) * 0.07);
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
@@ -220,7 +233,7 @@ html.gt-spin-open body {
   position: absolute;
   margin: 0;
   padding: 0.12em 0.5em;
-  font-size: calc(var(--gt-stage) * 0.024);
+  font-size: calc(var(--gtsw-stage) * 0.024);
   white-space: nowrap;
   opacity: 0.9;
   will-change: transform;
@@ -228,7 +241,7 @@ html.gt-spin-open body {
 
 /* Odds disclosure: small and secondary. */
 .gt-spin__meta {
-  margin: -4px auto 16px;
+  margin: 20px auto 0;
   max-width: 34ch;
 }
 
@@ -253,26 +266,26 @@ html.gt-spin-open body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(var(--gt-stage) * 0.16);
-  height: calc(var(--gt-stage) * 0.16);
+  width: calc(var(--gtsw-stage) * 0.16);
+  height: calc(var(--gtsw-stage) * 0.16);
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--gt-cream);
-  border: 3px solid var(--gt-gold);
+  background: var(--gtsw-cream);
+  border: 3px solid var(--gtsw-gold);
   z-index: 5;
   pointer-events: none;
 }
 
 .gt-spin__hub-text {
   font-weight: 600;
-  font-size: calc(var(--gt-stage) * 0.03);
+  font-size: calc(var(--gtsw-stage) * 0.03);
   line-height: 1.1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   padding: 0 0.4em;
 }
 
@@ -282,12 +295,12 @@ html.gt-spin-open body {
 
 .gt-spin__pointer {
   position: absolute;
-  top: calc(var(--gt-stage) * -0.035);
+  top: calc(var(--gtsw-stage) * -0.035);
   left: 50%;
-  width: calc(var(--gt-stage) * 0.1);
-  height: calc(var(--gt-stage) * 0.115);
+  width: calc(var(--gtsw-stage) * 0.1);
+  height: calc(var(--gtsw-stage) * 0.115);
   transform: translateX(-50%);
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   z-index: 6;
   pointer-events: none;
 }
@@ -309,9 +322,9 @@ html.gt-spin-open body {
 
 .gt-spin__button {
   appearance: none;
-  border: 2px solid var(--gt-navy);
+  border: 2px solid var(--gtsw-navy);
   border-radius: 999px;
-  background: var(--gt-navy);
+  background: var(--gtsw-navy);
   color: #fff;
   font: inherit;
   font-size: 16px;
@@ -331,7 +344,7 @@ html.gt-spin-open body {
 .gt-spin__button--secondary,
 .gt-spin__button--gold {
   background: transparent;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
 }
 
 /* --------------------------------------------------------------- result */
@@ -342,7 +355,7 @@ html.gt-spin-open body {
   border: 1px solid rgba(27, 42, 61, 0.2);
   border-radius: 12px;
   background: #fff;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   text-align: center;
 }
 
@@ -375,16 +388,16 @@ html.gt-spin-open body {
   margin: 4px 0 14.4px;
   /* Symmetric inset so the code is centred on the box, not on the free space. */
   padding: 13.6px 48px;
-  border: 2px dashed var(--gt-navy);
+  border: 2px dashed var(--gtsw-navy);
   border-radius: 10px;
   background: #fff;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   cursor: pointer;
   text-align: left;
 }
 
 .gt-spin__code-box:focus-visible {
-  outline: 2px solid var(--gt-navy);
+  outline: 2px solid var(--gtsw-navy);
   outline-offset: 2px;
 }
 
@@ -442,7 +455,7 @@ html.gt-spin-open body {
   display: inline-block;
   margin-top: 16px;
   font-size: 14.4px;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   text-decoration: none;
 }
 
@@ -503,17 +516,17 @@ html.gt-spin-open body {
   appearance: none;
   min-width: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--gt-navy);
+  border: 1px solid var(--gtsw-navy);
   border-radius: 999px;
   background: transparent;
-  color: var(--gt-navy);
+  color: var(--gtsw-navy);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
 }
 
 .gt-spin__chip--selected {
-  background: var(--gt-navy);
+  background: var(--gtsw-navy);
   color: #fff;
 }
 
@@ -554,7 +567,7 @@ html.gt-spin-open body {
 
 @media (min-width: 640px) {
   .gt-spin {
-    --gt-stage: 420px;
+    --gtsw-stage: 420px;
   }
   .gt-spin__heading {
     font-size: 28px;

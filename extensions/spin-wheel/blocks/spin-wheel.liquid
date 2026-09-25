@@ -23,12 +23,12 @@
   data-intro="{{ block.settings.intro | escape }}"
   data-back-label="{{ block.settings.back_label | default: 'Back to your order' | escape }}"
   style="
-    --gt-navy: {{ block.settings.color_navy | default: '#1b2a3d' }};
-    --gt-cream: {{ block.settings.color_cream | default: '#efe9dc' }};
-    --gt-green: {{ block.settings.color_green | default: '#2e5a3e' }};
-    --gt-gold: {{ block.settings.color_gold | default: '#c9a961' }};
-    --gt-bg: {{ block.settings.background_color | default: '#fbfbfa' }};
-    {% if bg_image != '' %}--gt-bg-image: url('{{ bg_image }}');{% endif %}
+    --gtsw-navy: {{ block.settings.color_navy | default: '#1b2a3d' }};
+    --gtsw-cream: {{ block.settings.color_cream | default: '#efe9dc' }};
+    --gtsw-green: {{ block.settings.color_green | default: '#2e5a3e' }};
+    --gtsw-gold: {{ block.settings.color_gold | default: '#c9a961' }};
+    --gtsw-bg: {{ block.settings.background_color | default: '#fbfbfa' }};
+    {% if bg_image != '' %}--gtsw-bg-image: url('{{ bg_image }}');{% endif %}
   "
   {{ block.shopify_attributes }}
 >
@@ -61,6 +61,13 @@
       </div>
     </div>
 
+    <div class="gt-spin__actions">
+      <button type="button" class="gt-spin__button" data-spin hidden>
+        {{ block.settings.button_label | default: 'Spin the wheel' | escape }}
+      </button>
+      <button type="button" class="gt-spin__button gt-spin__button--secondary" data-retry hidden>Try again</button>
+    </div>
+
     <div class="gt-spin__meta" data-odds hidden>
       <p class="gt-spin__odds" data-odds-line></p>
       <p class="gt-spin__odds gt-spin__odds--note">
@@ -73,13 +80,6 @@
           </a>
         </p>
       {%- endif -%}
-    </div>
-
-    <div class="gt-spin__actions">
-      <button type="button" class="gt-spin__button" data-spin hidden>
-        {{ block.settings.button_label | default: 'Spin the wheel' | escape }}
-      </button>
-      <button type="button" class="gt-spin__button gt-spin__button--secondary" data-retry hidden>Try again</button>
     </div>
 
     <div class="gt-spin__result" data-result hidden aria-live="polite"></div>
@@ -119,7 +119,7 @@
       "type": "textarea",
       "id": "intro",
       "label": "Intro (shown before the spin)",
-      "default": "One spin per qualifying order. Win a discount code for your next purchase or a complimentary GFJ gift."
+      "default": "One spin per qualifying order.\nWin a discount code for your next purchase or a complimentary GFJ gift."
     },
     {
       "type": "text",
