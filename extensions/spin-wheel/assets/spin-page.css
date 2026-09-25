@@ -1,11 +1,23 @@
 /* GreenTee Spin to Win. Minimal, mobile first; reads as a modal with its own URL. */
+
+/*
+ * The block renders inside a shadow root (see isolate() in spin-page.js), so
+ * theme rules never reach it. Sizes are in px, not rem: the theme sets the
+ * root font-size, and the modal must not scale with it. The host resets every
+ * inherited property so the root below starts from a clean slate.
+ */
+:host {
+  all: initial;
+  display: block;
+}
+
 .gt-spin {
   --gt-navy: #1b2a3d;
   --gt-cream: #efe9dc;
   --gt-green: #2e5a3e;
   --gt-gold: #c9a961;
   --gt-bg: #fbfbfa;
-  --gt-stage: min(100vw - 3rem, 400px);
+  --gt-stage: min(100vw - 48px, 400px);
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
@@ -81,33 +93,33 @@ html.gt-spin-open body {
   position: relative;
   max-width: 520px;
   margin: 0 auto;
-  padding: max(1rem, env(safe-area-inset-top)) 1.25rem calc(2rem + env(safe-area-inset-bottom));
+  padding: max(16px, env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom));
   text-align: center;
 }
 
 .gt-spin__close {
   position: absolute;
-  top: 0.5rem;
-  right: 0.75rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  top: 8px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: var(--gt-navy);
   text-decoration: none;
-  font-size: 1.75rem;
+  font-size: 28px;
   line-height: 1;
 }
 
 .gt-spin__header {
-  padding: 1rem 2.5rem 0.25rem;
+  padding: 16px 40px 4px;
 }
 
 .gt-spin__eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
+  margin: 0 0 4px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -116,14 +128,14 @@ html.gt-spin-open body {
 .gt-spin__heading {
   margin: 0;
   font-weight: 600;
-  font-size: 1.5rem;
+  font-size: 24px;
   line-height: 1.2;
 }
 
 .gt-spin__status {
-  margin: 0.5rem auto 0.75rem;
+  margin: 8px auto 12px;
   max-width: 36ch;
-  font-size: 0.95rem;
+  font-size: 15.2px;
   line-height: 1.5;
 }
 
@@ -136,7 +148,7 @@ html.gt-spin-open body {
   position: relative;
   width: var(--gt-stage);
   height: var(--gt-stage);
-  margin: 1.5rem auto 1.25rem;
+  margin: 24px auto 20px;
 }
 
 .gt-spin__wheel {
@@ -216,13 +228,13 @@ html.gt-spin-open body {
 
 /* Odds disclosure: small and secondary. */
 .gt-spin__meta {
-  margin: -0.25rem auto 1rem;
+  margin: -4px auto 16px;
   max-width: 34ch;
 }
 
 .gt-spin__odds {
-  margin: 0.2rem 0;
-  font-size: 0.8rem;
+  margin: 3.2px 0;
+  font-size: 12.8px;
   line-height: 1.45;
   opacity: 0.75;
 }
@@ -291,7 +303,7 @@ html.gt-spin-open body {
 .gt-spin__actions {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 9.6px;
   align-items: center;
 }
 
@@ -302,10 +314,10 @@ html.gt-spin-open body {
   background: var(--gt-navy);
   color: #fff;
   font: inherit;
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
-  padding: 0.85rem 1.75rem;
-  width: min(100%, 20rem);
+  padding: 13.6px 28px;
+  width: min(100%, 320px);
   cursor: pointer;
   text-decoration: none;
   text-align: center;
@@ -324,9 +336,9 @@ html.gt-spin-open body {
 
 /* --------------------------------------------------------------- result */
 .gt-spin__result {
-  margin: 1rem auto 0;
-  padding: 1.25rem 1rem 1.4rem;
-  width: min(100%, 24rem);
+  margin: 16px auto 0;
+  padding: 20px 16px 22.4px;
+  width: min(100%, 384px);
   border: 1px solid rgba(27, 42, 61, 0.2);
   border-radius: 12px;
   background: #fff;
@@ -334,13 +346,18 @@ html.gt-spin-open body {
   text-align: center;
 }
 
+/* Focused programmatically after a spin so screen readers land on it; no ring. */
+.gt-spin__result:focus {
+  outline: none;
+}
+
 .gt-spin__result--expired {
   border-color: #b54708;
 }
 
 .gt-spin__result-heading {
-  margin: 0 0 0.5rem;
-  font-size: 1.25rem;
+  margin: 0 0 8px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -348,14 +365,16 @@ html.gt-spin-open body {
 /* The code box: full width, code left, icon right, the whole box copies. */
 .gt-spin__code-box {
   appearance: none;
+  font: inherit;
+  line-height: 1.5;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin: 0.25rem 0 0.9rem;
+  margin: 4px 0 14.4px;
   /* Symmetric inset so the code is centred on the box, not on the free space. */
-  padding: 0.85rem 3rem;
+  padding: 13.6px 48px;
   border: 2px dashed var(--gt-navy);
   border-radius: 10px;
   background: #fff;
@@ -378,7 +397,7 @@ html.gt-spin-open body {
   min-width: 0;
   text-align: center;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1.35rem;
+  font-size: 21.6px;
   letter-spacing: 0.1em;
   overflow-wrap: anywhere;
   user-select: text;
@@ -387,16 +406,16 @@ html.gt-spin-open body {
 .gt-spin__code-side {
   position: absolute;
   top: 50%;
-  right: 1rem;
+  right: 16px;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 5.6px;
   transform: translateY(-50%);
 }
 
 .gt-spin__code-copied {
   flex: 0 0 auto;
-  font-size: 0.8rem;
+  font-size: 12.8px;
   font-weight: 600;
 }
 
@@ -409,23 +428,23 @@ html.gt-spin-open body {
 .gt-spin__primary {
   display: block;
   width: 100%;
-  margin-top: 0.25rem;
+  margin-top: 4px;
   /* "Shop accessories with code applied" must stay on one line at 375px. */
-  padding-inline: 0.75rem;
-  font-size: 0.95rem;
+  padding-inline: 12px;
+  font-size: 15.2px;
 }
 
 .gt-spin__meta-text {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
+  margin: 5.6px 0 0;
+  font-size: 12.8px;
   line-height: 1.4;
   color: #6b7280;
 }
 
 .gt-spin__back-link {
   display: inline-block;
-  margin-top: 1rem;
-  font-size: 0.9rem;
+  margin-top: 16px;
+  font-size: 14.4px;
   color: var(--gt-navy);
   text-decoration: none;
 }
@@ -446,8 +465,8 @@ html.gt-spin-open body {
 }
 
 .gt-spin__note {
-  margin: 0.5rem 0 0;
-  font-size: 0.92rem;
+  margin: 8px 0 0;
+  font-size: 14.72px;
   line-height: 1.5;
 }
 
@@ -456,8 +475,8 @@ html.gt-spin-open body {
 }
 
 .gt-spin__choice-label {
-  margin: 0.9rem 0 0.4rem;
-  font-size: 0.8rem;
+  margin: 14.4px 0 6.4px;
+  font-size: 12.8px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.8;
@@ -467,26 +486,26 @@ html.gt-spin-open body {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.75rem 1.5rem;
-  margin-top: 0.5rem;
+  gap: 12px 24px;
+  margin-top: 8px;
 }
 
 .gt-spin__choice-group {
-  min-width: 7rem;
+  min-width: 112px;
 }
 
 .gt-spin__choices {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
+  gap: 8px;
+  margin-bottom: 14.4px;
 }
 
 .gt-spin__chip {
   appearance: none;
-  min-width: 2.75rem;
-  padding: 0.5rem 0.75rem;
+  min-width: 44px;
+  padding: 8px 12px;
   border: 1px solid var(--gt-navy);
   border-radius: 999px;
   background: transparent;
@@ -508,7 +527,7 @@ html.gt-spin-open body {
 }
 
 .gt-spin__gift-confirm {
-  margin-top: 0.5rem;
+  margin-top: 8px;
 }
 
 .gt-spin__gift-image {
@@ -516,22 +535,22 @@ html.gt-spin-open body {
   width: min(60%, 180px);
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  margin: 0 auto 0.75rem;
+  margin: 0 auto 12px;
   border-radius: 10px;
 }
 
 .gt-spin__note--small {
-  font-size: 0.8rem;
+  font-size: 12.8px;
   opacity: 0.75;
 }
 
 .gt-spin__badge {
   display: inline-block;
-  margin-top: 0.75rem;
-  padding: 0.15rem 0.6rem;
+  margin-top: 12px;
+  padding: 2.4px 9.6px;
   border-radius: 999px;
   background: rgba(27, 42, 61, 0.08);
-  font-size: 0.75rem;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -541,9 +560,9 @@ html.gt-spin-open body {
     --gt-stage: 420px;
   }
   .gt-spin__heading {
-    font-size: 1.75rem;
+    font-size: 28px;
   }
   .gt-spin__panel {
-    padding-top: 2rem;
+    padding-top: 32px;
   }
 }

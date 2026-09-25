@@ -7,6 +7,7 @@
 {%- endcomment -%}
 
 {%- liquid
+  assign css_url = 'spin-page.css' | asset_url
   assign bg_image = ''
   if block.settings.background_image != blank
     assign bg_image = block.settings.background_image | image_url: width: 2000
@@ -17,6 +18,7 @@
   class="gt-spin{% if block.settings.overlay %} gt-spin--overlay{% endif %}"
   data-gt-spin
   data-overlay="{{ block.settings.overlay }}"
+  data-css="{{ css_url }}"
   data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
   data-intro="{{ block.settings.intro | escape }}"
   data-back-label="{{ block.settings.back_label | default: 'Back to your order' | escape }}"

@@ -174,6 +174,7 @@
   var orderUrl = null;
   var pendingReveal = null;
 
+  isolate();
   mountOverlay();
   configureClose();
 
@@ -287,9 +288,44 @@
    * traps the layer inside itself, which is how the theme header, title and
    * footer stay visible. On <body> the layer covers the viewport.
    */
+  /**
+   * Isolate the block from the theme. The root moves into a shadow root on a
+   * fresh host element, with its own copy of the stylesheet, so no theme rule
+   * (type selectors, root font-size, body colour) reaches it. The host carries
+   * `all: initial` so nothing inherits through the boundary either; the root
+   * then sets font, size, colour and background explicitly. Browsers without
+   * attachShadow keep the light-DOM fallback, which the CSS also defends.
+   */
+  var host = null;
+  function isolate() {
+    if (root.getRootNode() !== document) return; // already isolated
+    if (typeof root.attachShadow !== "function") return;
+    var cssUrl = root.getAttribute("data-css");
+    if (!cssUrl) {
+      var link = document.querySelector('link[rel="stylesheet"][href*="spin-page"]');
+      cssUrl = link ? link.getAttribute("href") : "";
+    }
+    host = document.createElement("div");
+    host.setAttribute("data-gt-spin-host", "");
+    host.style.cssText = "all:initial;display:block;";
+    var shadow = host.attachShadow({ mode: "open" });
+    if (cssUrl) {
+      var sheet = document.createElement("link");
+      sheet.rel = "stylesheet";
+      sheet.href = cssUrl;
+      shadow.appendChild(sheet);
+    }
+    if (cfg.overlay) document.body.appendChild(host);
+    else root.parentNode.insertBefore(host, root);
+    shadow.appendChild(root);
+  }
+
   function mountOverlay() {
     if (!cfg.overlay) return;
-    if (root.parentElement !== document.body) document.body.appendChild(root);
+    // A theme section with transform/filter/overflow would trap a fixed layer,
+    // so the layer (its host, once isolated) lives directly on <body>.
+    var layer = host || root;
+    if (layer.parentElement !== document.body) document.body.appendChild(layer);
     document.documentElement.classList.add("gt-spin-open");
   }
 
@@ -591,7 +627,10 @@
       try {
         var range = document.createRange();
         range.selectNodeContents(text);
-        var sel = window.getSelection();
+        // Inside a shadow root Chrome only exposes the selection on the root.
+        var sr = text.getRootNode();
+        var sel =
+          sr && typeof sr.getSelection === "function" ? sr.getSelection() : window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
       } catch (e) {

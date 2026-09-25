@@ -126,11 +126,18 @@ function flush(ms = 30): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** The block lives in a shadow root once mounted; query there, not the document. */
+function dom(): ParentNode {
+  return document.querySelector("[data-gt-spin-host]")?.shadowRoot ?? document;
+}
+
 async function mount(opts: Mount): Promise<Page> {
   calls = [];
   FakeWheel.last = null;
   document.documentElement.className = "";
   document.body.innerHTML = blockMarkup();
+  // The theme's head carries the block stylesheet; the shadow root reuses its URL.
+  document.head.innerHTML = '<link rel="stylesheet" href="https://cdn.example/spin-page.css?v=1">';
   window.history.replaceState(null, "", opts.url);
   (globalThis as unknown as { spinWheel: unknown }).spinWheel = { Wheel: FakeWheel };
   if (!("requestAnimationFrame" in window)) {
@@ -177,8 +184,8 @@ async function mount(opts: Mount): Promise<Page> {
     executeBodies,
     giftBodies,
     fetches,
-    el: (sel) => document.querySelector(sel) as HTMLElement,
-    status: () => (document.querySelector("[data-status]") as HTMLElement).textContent ?? "",
+    el: (sel) => dom().querySelector(sel) as HTMLElement,
+    status: () => (dom().querySelector("[data-status]") as HTMLElement).textContent ?? "",
     wheel: () => FakeWheel.last,
   };
 }
@@ -267,7 +274,7 @@ describe("spin page: spin and results", () => {
       state: { status: 200, body: ELIGIBLE },
     });
     expect(p.status()).toBe("Intro copy");
-    expect(document.querySelectorAll(".gt-spin__label")).toHaveLength(9);
+    expect(dom().querySelectorAll(".gt-spin__label")).toHaveLength(9);
     p.el("[data-spin]").click();
     await flush();
     expect(p.calls.map((c) => c.m)).toEqual(["spin", "spinToItem"]);
@@ -326,6 +333,12 @@ describe("spin page: spin and results", () => {
 
   it("selects the code text when the Clipboard API is unavailable", async () => {
     vi.stubGlobal("navigator", { ...navigator, clipboard: undefined });
+    // jsdom cannot hold a selection inside a shadow tree; capture the range instead.
+    const ranges: Range[] = [];
+    vi.stubGlobal("getSelection", () => ({
+      removeAllRanges: () => ranges.splice(0),
+      addRange: (r: Range) => ranges.push(r),
+    }));
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: { status: 200, body: { ...ELIGIBLE, alreadySpun: true, result: RESULT } },
@@ -333,7 +346,7 @@ describe("spin page: spin and results", () => {
     const btn = p.el("[data-result]").querySelector<HTMLButtonElement>("button.gt-spin__code-box")!;
     btn.click();
     await flush();
-    expect(String(window.getSelection())).toBe(RESULT.code);
+    expect(ranges.map((r) => r.toString())).toEqual([RESULT.code]);
     expect(btn.classList.contains("gt-spin__code-box--copied")).toBe(false);
   });
 
@@ -637,7 +650,7 @@ describe("spin page: colour, chips, odds and overlay", () => {
       }
     }
     // Label text contrasts with its slice: navy on cream, cream on navy/green.
-    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
     labels.forEach((l, i) => {
       const expected = bgs[i] === CREAM ? NAVY : CREAM;
       expect(l.style.color.replace(/\s/g, "")).toBe(hexToRgb(expected));
@@ -646,11 +659,11 @@ describe("spin page: colour, chips, odds and overlay", () => {
 
   it("puts a reward-type badge on the outer edge of every slice, outside the label", async () => {
     await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
-    const tags = [...document.querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
+    const tags = [...dom().querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
     expect(tags.map((c) => c.textContent)).toEqual(WHEEL.map((w) => w.typeLabel));
-    expect(document.querySelectorAll(".gt-spin__label .gt-spin__tag")).toHaveLength(0);
+    expect(dom().querySelectorAll(".gt-spin__label .gt-spin__tag")).toHaveLength(0);
     // Further from the centre than the label at the same angle.
-    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
     const dist = (e: HTMLElement) =>
       Math.hypot(parseFloat(e.style.left) - 50, parseFloat(e.style.top) - 50);
     tags.forEach((t, i) => expect(dist(t)).toBeGreaterThan(dist(labels[i])));
@@ -658,11 +671,11 @@ describe("spin page: colour, chips, odds and overlay", () => {
 
   it("tilts each badge along its arc, turning with the wheel, no flipping", async () => {
     await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
-    const tags = [...document.querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
+    const tags = [...dom().querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
     // Slice centres on a nine-slice wheel are 20°, 60°, 100°, ... in the wheel's frame.
     tags.forEach((t, i) => expect(t.style.transform).toContain(`rotate(${i * 40 + 20}deg)`));
     // Labels stay upright regardless (the wheel rests at -20°).
-    const labels = [...document.querySelectorAll<HTMLElement>(".gt-spin__label")];
+    const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
     labels.forEach((l) => expect(l.style.transform).toContain("rotate(20deg)"));
   });
 
@@ -702,7 +715,14 @@ describe("spin page: colour, chips, odds and overlay", () => {
       state: { status: 200, body: ELIGIBLE },
     });
     const root = p.el("[data-gt-spin]");
-    expect(root.parentElement).toBe(document.body);
+    // Isolated: the root sits in a shadow root whose host is directly on <body>.
+    const host = document.querySelector("[data-gt-spin-host]") as HTMLElement;
+    expect(host.parentElement).toBe(document.body);
+    expect(root.getRootNode()).toBe(host.shadowRoot);
+    expect(host.shadowRoot?.querySelector('link[rel="stylesheet"]')?.getAttribute("href")).toBe(
+      "https://cdn.example/spin-page.css?v=1",
+    );
+    expect(document.querySelector("[data-gt-spin]")).toBeNull();
     expect(document.documentElement.classList.contains("gt-spin-open")).toBe(true);
   });
 

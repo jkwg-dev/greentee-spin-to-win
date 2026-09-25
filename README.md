@@ -103,11 +103,17 @@ start from the Thank you page.
 ## Spin page (theme app extension)
 
 Add the "Spin to Win wheel" app block to the storefront page that `SPIN_PAGE_URL` points at.
-By default the block renders as a full-screen layer: at load it moves itself to `<body>` (a
-theme section carrying `transform`, `filter` or `overflow` would otherwise trap a fixed layer
-inside itself), covers the viewport above every theme element on a solid black backdrop, and
-locks scroll behind it, so nothing from the storefront theme is visible and the page reads as a
-modal opened over checkout rather than a navigation away from it. The close control returns to the order's own status page. A
+At load the block moves itself into a shadow root on a host element it appends to `<body>`,
+with its own `<link>` to `spin-page.css`. Theme CSS cannot reach into the shadow tree, the host
+carries `all: initial` so nothing inherits across the boundary, the root sets font, size, colour
+and background explicitly, and every size in the stylesheet is in px (the theme controls the
+root font-size, so rem would scale with it). The result is the same on every theme and matches
+the dev preview. Placing the host on `<body>` also matters for the overlay: a theme section
+carrying `transform`, `filter` or `overflow` would otherwise trap a fixed layer inside itself.
+By default the block renders as a full-screen layer that covers the viewport above every theme
+element on a solid black backdrop and locks scroll behind it, so nothing from the storefront
+theme is visible and the page reads as a modal opened over checkout rather than a navigation
+away from it. The close control returns to the order's own status page. A
 background image, colours, copy and the promotion rules URL are block settings; the rules link
 renders only when the URL is set.
 
