@@ -14,3 +14,15 @@ export function formatExpiry(iso: string): string {
     timeZoneName: "short",
   }).format(date);
 }
+
+/** "Nov 2, 2026", in the campaign's zone. Used on the result card's meta line. */
+export function formatExpiryShort(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: CAMPAIGN_TIMEZONE,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}

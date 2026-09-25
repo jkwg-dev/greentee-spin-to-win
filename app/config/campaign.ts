@@ -327,6 +327,39 @@ export function giftProductFor(rewardKey: RewardKey): GiftProduct | null {
 /* ------------------------------------------------------- disclosure */
 
 /** Customer facing names for the two reward kinds, shown as chips. */
+/**
+ * Short reward name for headings ("15% off accessories", "GFJ Gloves"), as
+ * opposed to `label`, the full name used on discount titles and the record.
+ */
+export function rewardShortLabel(rewardKey: string): string {
+  const slice = SLICES.find((s) => s.rewardKey === rewardKey);
+  if (!slice) return rewardKey;
+  if (slice.discount) return `${slice.discount.percentage}% off ${slice.discount.collection}`;
+  return slice.wheelLabel;
+}
+
+/** Public storefront origin; every "shop" link on a result card starts here. */
+export const SHOP_ORIGIN = "https://shop.greenteegolfshop.com";
+
+/**
+ * Where a discount winner lands after the code is applied. Shopify's
+ * /discount/CODE?redirect=PATH URL attaches the code to the cart, then
+ * redirects. One entry per discount reward; the storefront modal keeps a
+ * copy (spin-page.js cannot import this module) and a test pins them equal.
+ */
+export const REWARD_REDIRECTS: Readonly<Record<DiscountCollectionKey, string>> = {
+  clubs: "/collections/clubs-regular-priced",
+  accessories: "/collections/accessories-regular-priced",
+  apparel: "/collections/apparel-regular-priced",
+};
+
+/** The "Shop with discount" link for a discount reward. Unknown rewards fall back to the home page. */
+export function discountShopUrl(rewardKey: string, code: string): string {
+  const slice = SLICES.find((s) => s.rewardKey === rewardKey);
+  const path = slice?.discount ? REWARD_REDIRECTS[slice.discount.collection] : "/";
+  return `${SHOP_ORIGIN}/discount/${encodeURIComponent(code)}?redirect=${encodeURIComponent(path)}`;
+}
+
 export const REWARD_TYPE_LABELS: Readonly<Record<RewardType, string>> = {
   discount: "Discount",
   gift: "Free gift",

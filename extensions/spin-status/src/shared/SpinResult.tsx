@@ -1,8 +1,10 @@
-import { REWARD_TYPE_LABELS } from "../../../../app/config/campaign";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { SHOP_ORIGIN, discountShopUrl, rewardShortLabel } from "../../../../app/config/campaign";
 import type { PublicSpinResult } from "./api";
-import { formatExpiry } from "./format";
+import { formatExpiryShort } from "./format";
 
 const CLIPBOARD_ID = "greentee-spin-code";
+const COPIED_MS = 2000;
 
 export interface SpinResultProps {
   readonly result: PublicSpinResult;
@@ -14,16 +16,16 @@ export interface SpinResultProps {
 }
 
 /**
- * The stored reward. Shared by both targets so the two pages never disagree
- * about what a customer won. No email language anywhere: the code lives on
- * screen and on this order's status page only.
+ * The stored reward, laid out like the storefront modal's result card:
+ * heading, code row with a copy control, a full-width shop button, then two
+ * small meta lines. Shared by both targets so the two pages never disagree
+ * about what a customer won.
  */
 export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultProps) {
-  const expiry = formatExpiry(result.expiresAt);
+  const short = rewardShortLabel(result.rewardKey) || result.rewardLabel;
+  const expiry = formatExpiryShort(result.expiresAt);
   const heading =
-    surface === "thank-you"
-      ? `You won ${result.rewardLabel}!`
-      : `Your Spin to Win reward: ${result.rewardLabel}`;
+    surface === "thank-you" ? `You won ${short}!` : `Your Spin to Win reward: ${short}`;
 
   if (result.rewardType === "gift") {
     const status = result.gift?.status ?? "pending";
@@ -32,57 +34,44 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
         ? `${result.rewardLabel} (${result.gift.variantTitle})`
         : result.rewardLabel;
       return (
-        <s-banner tone="success" heading={heading}>
-          <s-stack direction="block" gap="small">
-            <RewardTypeBadge type={result.rewardType} />
-            <s-paragraph>
-              Added to this order at no charge: {what}. It ships with the rest of your items.
-            </s-paragraph>
-            {testMode ? <TestBadge /> : null}
-          </s-stack>
-        </s-banner>
+        <Card heading={heading} testMode={testMode}>
+          <s-button variant="primary" inlineSize="fill" href={`${SHOP_ORIGIN}/`}>
+            Start shopping
+          </s-button>
+          <Meta lines={[`Added to this order at no charge: ${what}.`]} />
+        </Card>
       );
     }
     if (status === "unavailable") {
       return (
-        <s-banner tone="warning" heading={heading}>
-          <s-stack direction="block" gap="small">
-            <RewardTypeBadge type={result.rewardType} />
-            <s-paragraph>
-              That gift was out of stock when you tried to add it. Contact us and we'll sort it out.
-            </s-paragraph>
-            {testMode ? <TestBadge /> : null}
-          </s-stack>
-        </s-banner>
+        <Card heading={heading} testMode={testMode}>
+          <Meta
+            lines={[
+              "That gift was out of stock when you tried to add it. Contact us and we'll sort it out.",
+            ]}
+          />
+        </Card>
       );
     }
     // Pending. Only the Thank you page may send the customer to the spin page.
     if (surface === "thank-you" && spinUrl) {
       return (
-        <s-banner tone="success" heading={heading}>
-          <s-stack direction="block" gap="base">
-            <RewardTypeBadge type={result.rewardType} />
-            <s-paragraph>
-              Your gift is waiting. Confirm it and we'll add it to this order at no charge.
-            </s-paragraph>
-            <s-button variant="primary" href={spinUrl}>
-              Add my gift
-            </s-button>
-            {testMode ? <TestBadge /> : null}
-          </s-stack>
-        </s-banner>
+        <Card heading={heading} testMode={testMode}>
+          <s-button variant="primary" inlineSize="fill" href={spinUrl}>
+            Add my gift
+          </s-button>
+          <Meta lines={["Confirm your gift and we'll add it to this order at no charge."]} />
+        </Card>
       );
     }
     return (
-      <s-banner tone="info" heading={heading}>
-        <s-stack direction="block" gap="small">
-          <RewardTypeBadge type={result.rewardType} />
-          <s-paragraph>
-            Your gift hasn't been added to this order yet. Contact us and we'll sort it out.
-          </s-paragraph>
-          {testMode ? <TestBadge /> : null}
-        </s-stack>
-      </s-banner>
+      <Card heading={heading} testMode={testMode}>
+        <Meta
+          lines={[
+            "Your gift hasn't been added to this order yet. Contact us and we'll sort it out.",
+          ]}
+        />
+      </Card>
     );
   }
 
@@ -90,47 +79,117 @@ export function SpinResult({ result, testMode, surface, spinUrl }: SpinResultPro
 
   if (result.expired) {
     return (
-      <s-banner tone="warning" heading="Your Spin to Win code has expired">
-        <s-stack direction="block" gap="small">
-          <s-paragraph>
-            Code <s-text type="strong">{code}</s-text> for {result.rewardLabel} expired on {expiry}.
-          </s-paragraph>
-          {testMode ? <TestBadge /> : null}
-        </s-stack>
-      </s-banner>
+      <Card heading="Your Spin to Win code has expired" testMode={testMode}>
+        <CodeRow code={code} />
+        <Meta lines={[`${short} · Expired ${expiry}`]} />
+      </Card>
     );
   }
 
   return (
-    <s-banner tone="success" heading={heading}>
-      <s-stack direction="block" gap="base">
-        <RewardTypeBadge type={result.rewardType} />
-        <s-paragraph>
-          Use this code on your next GreenTee order. One use, and it's yours only.
-        </s-paragraph>
-        <s-stack direction="inline" gap="base" alignItems="center">
-          <s-heading>{code}</s-heading>
-          <s-button variant="secondary" command="--copy" commandFor={CLIPBOARD_ID}>
-            Copy code
-          </s-button>
-          <s-clipboard-item id={CLIPBOARD_ID} text={code}></s-clipboard-item>
-        </s-stack>
-        <s-paragraph color="subdued">Valid until {expiry}.</s-paragraph>
-        <s-paragraph color="subdued">
-          Keep this code somewhere safe. You can also find it later through the link in your order
-          confirmation email.
-        </s-paragraph>
-        {testMode ? <TestBadge /> : null}
-      </s-stack>
-    </s-banner>
+    <Card heading={heading} testMode={testMode}>
+      <CodeRow code={code} />
+      <s-button variant="primary" inlineSize="fill" href={discountShopUrl(result.rewardKey, code)}>
+        Shop with discount
+      </s-button>
+      <Meta
+        lines={[`Valid until ${expiry} · One-time use`, "Also saved in your confirmation email."]}
+      />
+    </Card>
   );
 }
 
-/** "Discount" / "Free gift", matching the chip on the spin page's result card. */
-export function RewardTypeBadge({ type }: { readonly type: PublicSpinResult["rewardType"] }) {
-  return <s-badge tone="neutral">{REWARD_TYPE_LABELS[type]}</s-badge>;
+/** Neutral bordered container; the heading carries the test badge when it applies. */
+function Card({
+  heading,
+  testMode,
+  children,
+}: {
+  readonly heading: string;
+  readonly testMode: boolean;
+  readonly children: preact.ComponentChildren;
+}) {
+  return (
+    <s-box border="base" borderRadius="base" padding="large" background="base">
+      <s-stack direction="block" gap="base" alignItems="center">
+        <s-stack direction="inline" gap="small" alignItems="center" justifyContent="center">
+          <s-heading>{heading}</s-heading>
+          {testMode ? <TestBadge /> : null}
+        </s-stack>
+        {children}
+      </s-stack>
+    </s-box>
+  );
+}
+
+/**
+ * The code in a dashed box with the copy control inside the same row. Copying
+ * goes through s-clipboard-item, the only clipboard access checkout allows;
+ * its copy event drives the two second "Copied" confirmation.
+ */
+function CodeRow({ code }: { readonly code: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+  const onCopy = () => {
+    setCopied(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), COPIED_MS);
+  };
+  return (
+    <s-grid
+      gridTemplateColumns="1fr auto"
+      gap="small"
+      alignItems="center"
+      inlineSize="100%"
+      border="base base dashed"
+      borderRadius="base"
+      paddingBlock="small"
+      paddingInline="base"
+    >
+      <s-heading>{code}</s-heading>
+      <s-button
+        variant="secondary"
+        accessibilityLabel={copied ? "Code copied" : "Copy discount code"}
+        command="--copy"
+        commandFor={CLIPBOARD_ID}
+      >
+        {copied ? (
+          <s-stack direction="inline" gap="small-200" alignItems="center">
+            <s-icon type="check" />
+            Copied
+          </s-stack>
+        ) : (
+          <s-icon type="clipboard" />
+        )}
+      </s-button>
+      <s-clipboard-item id={CLIPBOARD_ID} text={code} onCopy={onCopy}></s-clipboard-item>
+    </s-grid>
+  );
+}
+
+/** Small subdued lines under the button. Two at most. */
+function Meta({ lines }: { readonly lines: readonly string[] }) {
+  return (
+    <s-stack direction="block" gap="none" alignItems="center">
+      {lines.slice(0, 2).map((line) => (
+        <s-text key={line} type="small" color="subdued">
+          {line}
+        </s-text>
+      ))}
+    </s-stack>
+  );
 }
 
 export function TestBadge() {
-  return <s-badge tone="neutral">Test spin</s-badge>;
+  return (
+    <s-badge size="small" color="subdued">
+      Test spin
+    </s-badge>
+  );
 }
