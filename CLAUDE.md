@@ -51,7 +51,7 @@ alternate light blue and a deeper light blue in wheel order (so consecutive gift
 colour and each gift product, having two slices, shows once in each colour), and label text is
 black on every slice. Labels are printed on the slice and turn with it, "up" towards the rim:
 discounts read COUPON / 30% OFF / APPAREL, gifts GFJ / GLOVES. The face sits in a blue rim with
-twenty marquee bulbs and a blue START hub that also triggers the spin; the reward-type chip on
+nineteen marquee bulbs (the slot under the pointer is empty) and a blue START hub that also triggers the spin; the reward-type chip on
 the wheel was dropped with this design. Result cards (spin page and Thank you page) share one layout:
 heading with the short reward name, dashed code box with a copy control, a full-width "Shop with
 discount" button that applies the code and lands on the reward's collection (`REWARD_REDIRECTS`

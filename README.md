@@ -125,7 +125,7 @@ or missing token: a plain message and nothing else; stored result: shown without
 `/apps/spin/execute` on Spin. The server picks the slice; the page animates to that index with
 `spinToItem` and never derives its own outcome. The wheel has nine slices, drawn in reward-table
 order (every slice awards something; there is no "try again" slice). Discount slices are white
-and gift slices alternate two light blues; a blue rim with twenty marquee bulbs (they chase while
+and gift slices alternate two light blues; a blue rim with nineteen marquee bulbs (the slot under the pointer is empty) (they chase while
 the wheel spins, still under reduced motion) and a blue START hub (tapping it spins) frame the
 face. Labels live in an HTML layer that rotates with the wheel, each printed on its slice so it
 turns with it: COUPON / 30% OFF / APPAREL for discounts, GFJ / GLOVES for gifts. A failed execute stops the

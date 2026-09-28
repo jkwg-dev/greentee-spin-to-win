@@ -413,11 +413,14 @@
     buildBulbs();
   }
 
-  /** Marquee bulbs around the rim. Static: the rim does not turn. */
+  /**
+   * Marquee bulbs around the rim. Static: the rim does not turn. The slot at
+   * the very top is left empty because the pointer sits over it.
+   */
   function buildBulbs() {
     if (!els.rim) return;
     while (els.rim.firstChild) els.rim.removeChild(els.rim.firstChild);
-    for (var i = 0; i < BULB_COUNT; i++) {
+    for (var i = 1; i < BULB_COUNT; i++) {
       var rad = ((i * 360) / BULB_COUNT) * (Math.PI / 180);
       var bulb = el("span", "gt-spin__bulb");
       bulb.style.left = 50 + BULB_RADIUS * 50 * Math.sin(rad) + "%";

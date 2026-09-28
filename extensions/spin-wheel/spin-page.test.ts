@@ -760,16 +760,17 @@ describe("spin page: colour, chips, odds and overlay", () => {
     );
   });
 
-  it("studs the rim with 20 bulbs and shows START in the hub, which also spins", async () => {
+  it("studs the rim with 19 bulbs (none under the pointer) and shows START in the hub, which also spins", async () => {
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: { status: 200, body: ELIGIBLE },
     });
     const bulbs = [...dom().querySelectorAll<HTMLElement>("[data-rim] .gt-spin__bulb")];
-    expect(bulbs).toHaveLength(20);
-    // First bulb at the top, evenly spaced around the rim's centre line.
-    expect(bulbs[0].style.left).toBe("50%");
-    expect(parseFloat(bulbs[0].style.top)).toBeCloseTo(50 - 48.125, 3);
+    expect(bulbs).toHaveLength(19);
+    // Twenty slots on the rim's centre line, the top one (under the pointer) left empty.
+    const tops = bulbs.map((b) => parseFloat(b.style.top));
+    expect(Math.min(...tops)).toBeGreaterThan(50 - 48.125 + 0.5);
+    expect(parseFloat(bulbs[0].style.left)).toBeCloseTo(50 + 48.125 * Math.sin(Math.PI / 10), 3);
     expect(dom().querySelector(".gt-spin__hub-text")?.textContent).toBe("START");
     expect(p.calls.map((c) => c.m)).toEqual([]);
     p.el("[data-hub]").click();
