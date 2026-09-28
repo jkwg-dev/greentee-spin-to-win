@@ -93,7 +93,9 @@ link again (or the order status page) so the app re-reads it.
 
 ## 6. Close, November 2 after 9:00 AM Pacific
 
-- [ ] Codes expire on their own. Set campaign mode to `off` once the last gifts are added.
+- [ ] New spins stop on their own at the end date. Do **not** set campaign mode to `off` yet:
+      codes are valid 30 days from each spin, the last until December 2, and `off` hides them
+      from order status pages. Set it to `off` after December 2.
 - [ ] Export orders with `tag:gift-pending` and resolve them by hand.
 - [ ] Reporting: export order metafields `greentee_spin.result`.
 

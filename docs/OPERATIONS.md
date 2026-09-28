@@ -7,7 +7,9 @@ order (300 CAD subtotal or more), taken on the Thank you page right after checko
 
 - **Discount code** (75% of spins): a single-use eight-character code such as `7K2Q9MXA` (no
   prefix; letters and digits only, never O, 0, I or 1) for 10% off clubs, 15% off
-  accessories or 30% off apparel, regular priced collections only. It expires with the campaign.
+  accessories or 30% off apparel, regular priced collections only. **It is valid for 30 days from
+  the spin**, not until the campaign ends: a code won on October 5 works until November 4, one won
+  on November 2 works until December 2. The exact date is on the customer's order status page.
   The code is shown on screen and on the customer's order status page. We do not email it.
 - **Gift** (25% of spins): GFJ Aura Control gloves (customer picks hand and size; white only),
   GFJ socks or a GFJ club brush (we pick the colour). The gift is added to the same order as a
@@ -60,6 +62,17 @@ code, search Discounts for the code itself.
 Test discounts are titled `2026 Oct Spin Wheel of Fortune Promotion TEST - <reward>` and their
 codes start with `TEST-`. Search `Promotion TEST` to see only those. They are deleted before
 launch and must not be honoured after October 1.
+
+## Questions about expiry after the campaign
+
+Codes do not stop working on November 2. Each one is good for 30 days from the moment it was
+won, so the last codes stay valid until December 2. If a customer asks, look up their order: the
+`greentee_spin.result` metafield holds `expiresAt`, and the same date shows on their order status
+page. A code that has passed its date shows there as expired and is rejected at checkout.
+
+Keep campaign mode `live` until December 2. The end date already stops new spins on November 2;
+what `off` does after that is hide the stored codes from order status pages, which would leave
+customers holding valid codes with nowhere to see them.
 
 ## If the wheel needs to be switched off
 

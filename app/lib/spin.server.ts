@@ -12,6 +12,7 @@ import {
   giftProductFor,
   type CampaignMode,
   type Slice,
+  discountExpiry,
 } from "~/config/campaign";
 import type { AppEnv } from "~/config/env.server";
 import type { AdminClient } from "~/lib/admin.server";
@@ -406,6 +407,11 @@ export async function executeSpin(
   let code: string | null = null;
   let discountNodeId: string | null = null;
   let gift: GiftRecord | null = null;
+  // A code is valid for DISCOUNT_VALIDITY_DAYS from this spin, not until the
+  // campaign end, so late spinners get the same window as early ones. A gift
+  // has to be confirmed while the campaign is open, so its record keeps the
+  // campaign end.
+  const expiresAt = slice.rewardType === "discount" ? discountExpiry(now) : deps.env.campaignEnd;
 
   if (slice.rewardType === "discount" && slice.discount) {
     const title = discountTitle(slice, tester);
@@ -417,7 +423,7 @@ export async function executeSpin(
         percentage: slice.discount.percentage,
         collectionId: deps.env.collections[slice.discount.collection],
         startsAt: now,
-        endsAt: deps.env.campaignEnd,
+        endsAt: expiresAt,
       });
       code = ensured.code;
       discountNodeId = ensured.discountNodeId;
@@ -466,7 +472,7 @@ export async function executeSpin(
     code,
     discountNodeId,
     gift,
-    expiresAt: deps.env.campaignEnd.toISOString(),
+    expiresAt: expiresAt.toISOString(),
     email: order.email,
     testMode: tester,
     forced: forcing,

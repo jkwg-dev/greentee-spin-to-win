@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CAMPAIGN_TITLE, DISCOUNT_TITLE, GIFT_CATALOG, GIFT_TAGS, SLICES } from "~/config/campaign";
+import {
+  CAMPAIGN_TITLE,
+  DISCOUNT_TITLE,
+  GIFT_CATALOG,
+  GIFT_TAGS,
+  SLICES,
+  DISCOUNT_VALIDITY_DAYS,
+} from "~/config/campaign";
 import { loadEnv, type AppEnv } from "~/config/env.server";
 import type { AdminClient, GraphqlContext, UserError } from "~/lib/admin.server";
 import { setLogSink, type LogLine } from "~/lib/log.server";
@@ -467,7 +474,7 @@ describe("executeSpin: discount reward", () => {
         items: { collections: { add: ["gid://shopify/Collection/11"] } },
       },
       combinesWith: { productDiscounts: false, orderDiscounts: false, shippingDiscounts: false },
-      endsAt: d.env.campaignEnd.toISOString(),
+      endsAt: new Date(NOW.getTime() + 30 * 86400000).toISOString(),
     });
     expect(input).not.toHaveProperty("minimumRequirement");
 
@@ -489,9 +496,36 @@ describe("executeSpin: discount reward", () => {
       email: "buyer@example.com",
       testMode: false,
       forced: false,
-      expiresAt: "2026-11-02T17:00:00.000Z",
+      expiresAt: new Date(NOW.getTime() + 30 * 86400000).toISOString(),
     });
     expect(record).not.toHaveProperty("notified");
+  });
+
+  it("gives a spin near the campaign end a code that outlives the campaign (no clamp)", async () => {
+    const admin = new FakeAdmin();
+    admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
+    const d = deps(admin);
+    const lastMinute = new Date(d.env.campaignEnd.getTime() - 60_000);
+    const outcome = await executeSpin(DISCOUNT_ORDER, {}, { ...d, now: () => lastMinute });
+    const expected = new Date(lastMinute.getTime() + DISCOUNT_VALIDITY_DAYS * 86400000);
+    expect(expected.getTime()).toBeGreaterThan(d.env.campaignEnd.getTime());
+    // The discount itself, the stored record and what the customer is told all agree.
+    const [create] = admin.ops("discountCodeBasicCreate");
+    expect((create.vars.basicCodeDiscount as { endsAt: string }).endsAt).toBe(
+      expected.toISOString(),
+    );
+    const record = JSON.parse(admin.orders.get(DISCOUNT_ORDER)!.metafield!.value);
+    expect(record.expiresAt).toBe(expected.toISOString());
+    expect(outcome).toMatchObject({
+      result: { expiresAt: expected.toISOString(), expired: false },
+    });
+    // Still valid the day after the campaign closes.
+    clearOrderCache();
+    const dayAfter = { ...d, now: () => new Date(d.env.campaignEnd.getTime() + 86400000) };
+    expect(await getSpinStatus(DISCOUNT_ORDER, dayAfter)).toMatchObject({
+      alreadySpun: true,
+      result: { expired: false },
+    });
   });
 
   it("returns the stored result on a second spin without creating anything", async () => {
@@ -609,12 +643,12 @@ describe("executeSpin: gates", () => {
     });
   });
 
-  it("shows a stored result as expired after the campaign end", async () => {
+  it("shows a stored result as expired once its 30 days are up", async () => {
     const admin = new FakeAdmin();
     admin.orders.set(DISCOUNT_ORDER, rawOrder(DISCOUNT_ORDER));
     await executeSpin(DISCOUNT_ORDER, {}, deps(admin));
     clearOrderCache();
-    const later = { ...deps(admin), now: () => new Date("2026-11-03T00:00:00Z") };
+    const later = { ...deps(admin), now: () => new Date(NOW.getTime() + 31 * 86400000) };
     const status = await getSpinStatus(DISCOUNT_ORDER, later);
     expect(status).toMatchObject({ alreadySpun: true, result: { expired: true } });
   });

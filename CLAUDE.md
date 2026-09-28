@@ -91,8 +91,11 @@ Each discount reward creates one single use code through `discountCodeBasicCreat
   earned the spin. Adding a minimum here would double charge the customer for the same condition.
 - `usageLimit: 1`, `appliesOncePerCustomer: true`.
 - `combinesWith`: product, order, and shipping discounts all false.
-- `endsAt` is the campaign end (November 2, 2026, 09:00 America/Vancouver). All codes expire
-  together when the campaign closes.
+- `endsAt` is `DISCOUNT_VALIDITY_DAYS` (30) after the moment of the spin, computed per code at
+  creation (`discountExpiry` in `campaign.ts`). Codes therefore outlive the campaign: one issued
+  on November 2 works until December 2. That is intended. Never clamp `endsAt` to the campaign
+  window, and never display the campaign end as a code's expiry; the expiry shown anywhere comes
+  from the stored record's `expiresAt`.
 - Code format: 8 characters from an unambiguous alphabet (no O, 0, I, 1), no prefix, e.g.
   `7K2Q9MXA`. Customers type these on a phone and staff read them aloud. Test codes alone carry a
   prefix: `TEST-7K2Q9MXA`.
@@ -237,7 +240,7 @@ Value shape:
   "rewardType": "discount",
   "code": "7K2Q9MXA",
   "discountNodeId": "gid://shopify/DiscountCodeNode/123456789",
-  "expiresAt": "2026-11-02T17:00:00.000Z",
+  "expiresAt": "2026-11-02T18:22:41.000Z",
   "email": "customer@example.com",
   "gift": null,
   "testMode": false,
@@ -245,6 +248,8 @@ Value shape:
 }
 ```
 
+`expiresAt` is `spunAt` plus `DISCOUNT_VALIDITY_DAYS` for a discount; for a gift it is the campaign
+end, since a gift has to be confirmed while the campaign is open.
 There is no `notified` field: the code is delivered on screen and nowhere else. The record also
 carries `testMode` and `forced` (see Test mode). For gifts, `rewardType` is `gift`, `code` and
 `discountNodeId` are null, and `gift` holds `{ status: "pending" | "added" | "unavailable",
@@ -359,8 +364,9 @@ unfinished work. Do not add it back without a new requirement.
   with backoff, and show a "just a moment" state rather than an error.
 - If `discountCodeBasicCreate` returns `userErrors`, do not silently swallow it. Log the full
   payload, return a retryable error, and never write the metafield.
-- If a customer reopens the thank you page after the campaign ends, still show their stored
-  code with a clear "expired" indication.
+- If a customer reopens the thank you page after their code's `expiresAt`, still show the stored
+  code with a clear "expired" indication. A code is not expired merely because the campaign has
+  closed.
 - Rate limits: the Admin API is throttled. Cache eligibility lookups briefly per order and
   respect cost based throttling in the GraphQL response.
 - Ineligible orders get an encouraging message, not an error.

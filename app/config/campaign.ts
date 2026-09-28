@@ -20,6 +20,19 @@ export const CAMPAIGN_DEFAULTS = {
   testTag: "test-user",
 } as const;
 
+/**
+ * How long a discount code stays valid, counted from the moment of the spin.
+ * Codes therefore outlive the campaign: one issued on the last day works
+ * until early December. That is intended; nothing clamps this to the
+ * campaign window.
+ */
+export const DISCOUNT_VALIDITY_DAYS = 30;
+
+/** The expiry for a discount code spun at `spunAt`. */
+export function discountExpiry(spunAt: Date): Date {
+  return new Date(spunAt.getTime() + DISCOUNT_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+}
+
 export const CAMPAIGN_MODES = ["off", "test", "live"] as const;
 export type CampaignMode = (typeof CAMPAIGN_MODES)[number];
 
