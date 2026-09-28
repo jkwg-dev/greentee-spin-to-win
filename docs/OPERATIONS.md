@@ -63,6 +63,14 @@ Test discounts are titled `2026 Oct Spin Wheel of Fortune Promotion TEST - <rewa
 codes start with `TEST-`. Search `Promotion TEST` to see only those. They are deleted before
 launch and must not be honoured after October 1.
 
+## The cart progress bar
+
+The cart page and cart drawer show a small bar toward the $300 spin threshold with one line
+("Add $45 more to unlock a spin on the wheel." or "You've unlocked a spin on the wheel after
+checkout."). It uses the same subtotal as the spin itself, so a customer it says has qualified
+will see the wheel on the Thank you page. It shows only while the campaign is live and hides
+itself afterwards; the block can stay in the theme. It is separate from the boots gift tier bar.
+
 ## Questions about expiry after the campaign
 
 Codes do not stop working on November 2. Each one is good for 30 days from the moment it was

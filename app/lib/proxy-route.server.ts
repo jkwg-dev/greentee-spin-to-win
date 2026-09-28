@@ -10,6 +10,21 @@ import { verifySpinToken } from "~/lib/spin-token.server";
 
 export type ProxyGuard = { ok: true; orderId: string } | { ok: false; response: Response };
 
+/** Verifies only Shopify's proxy signature, for endpoints that carry no spin token. */
+export function guardProxySignature(
+  request: Request,
+  env: AppEnv,
+): { ok: true } | { ok: false; response: Response } {
+  const url = new URL(request.url);
+  const proxy = verifyAppProxyRequest(url, env.shopifyApiSecret, { shopDomain: env.shopDomain });
+  if (proxy.ok) return { ok: true };
+  log.warn("proxy.rejected", { reason: proxy.reason, path: url.pathname });
+  return {
+    ok: false,
+    response: json({ error: "forbidden", reason: proxy.reason }, { status: 403 }),
+  };
+}
+
 export function guardProxyRequest(
   request: Request,
   token: string | null | undefined,

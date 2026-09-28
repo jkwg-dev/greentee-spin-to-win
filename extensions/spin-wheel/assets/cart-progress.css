@@ -1,0 +1,92 @@
+/*
+ * Spin to Win cart progress. Styled to sit beside the store's existing tier
+ * bar: theme font, grey track, black fill, one circular marker at the
+ * threshold with the amount beneath it. Quiet by design; it is on every
+ * cart view.
+ */
+.gt-cartbar {
+  --gtsw-cartbar-ink: #111;
+  --gtsw-cartbar-muted: #737373;
+  --gtsw-cartbar-track: #e6e6e6;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 12px 0 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--gtsw-cartbar-ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.gt-cartbar[hidden] {
+  display: none;
+}
+
+.gt-cartbar__line {
+  margin: 0 0 12px;
+  font-weight: 400;
+}
+
+.gt-cartbar__line strong {
+  font-weight: 700;
+}
+
+.gt-cartbar__bar {
+  position: relative;
+  /* Room on the right for the marker, and below it for the tier amount. */
+  padding: 4px 8px 22px 0;
+}
+
+.gt-cartbar__track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gtsw-cartbar-track);
+  overflow: hidden;
+}
+
+.gt-cartbar__fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--gtsw-cartbar-ink);
+  transition: width 0.35s ease;
+}
+
+/* The threshold marker: hollow until reached, then filled. */
+.gt-cartbar__marker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--gtsw-cartbar-track);
+  background: #fff;
+}
+
+.gt-cartbar--reached .gt-cartbar__marker {
+  border-color: var(--gtsw-cartbar-ink);
+  background: var(--gtsw-cartbar-ink);
+}
+
+.gt-cartbar__tier {
+  position: absolute;
+  right: 0;
+  top: 20px;
+  font-size: 13px;
+  color: var(--gtsw-cartbar-muted);
+  white-space: nowrap;
+}
+
+.gt-cartbar--reached .gt-cartbar__tier {
+  color: var(--gtsw-cartbar-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-cartbar__fill {
+    transition: none;
+  }
+}

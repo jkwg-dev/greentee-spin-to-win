@@ -1,0 +1,92 @@
+{%- comment -%}
+  GreenTee Spin to Win: cart progress toward the spin threshold. Place it on the
+  cart page and in the cart drawer. It renders nothing outside the campaign
+  (the server decides: mode `live` and inside the window), so it can stay in
+  the theme after the promotion. The subtotal basis matches spin eligibility:
+  cart total after discounts, before shipping and taxes, in the shop currency.
+{%- endcomment -%}
+
+{%- liquid
+  assign mode = shop.metafields.greentee_spin.campaign_mode | downcase | strip
+  assign cart_currency = cart.currency.iso_code
+-%}
+
+{%- if mode == 'off' or mode == 'test' -%}
+  {%- comment -%} Not live: nothing, without even loading the script. {%- endcomment -%}
+{%- elsif cart_currency != shop.currency or cart.taxes_included -%}
+  {%- comment -%}
+    The threshold is in the shop currency and before tax. A cart shown in another
+    currency, or with tax folded into prices, cannot be compared honestly, so
+    show nothing rather than a bar that might lie.
+  {%- endcomment -%}
+{%- else -%}
+  <gt-cart-progress
+    class="gt-cartbar"
+    hidden
+    data-gt-cartbar
+    data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
+    data-subtotal="{{ cart.total_price }}"
+    data-currency="{{ cart_currency }}"
+    data-locale="{{ request.locale.iso_code }}"
+    data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add {amount} more to unlock a spin on the wheel.' | escape }}"
+    data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
+    {{ block.shopify_attributes }}
+  >
+    <p class="gt-cartbar__line" data-line aria-live="polite"></p>
+    <div class="gt-cartbar__bar">
+      <div
+        class="gt-cartbar__track"
+        role="progressbar"
+        aria-label="Progress toward a spin on the wheel"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        data-track
+      >
+        <div class="gt-cartbar__fill" data-fill></div>
+      </div>
+      <span class="gt-cartbar__marker" data-marker aria-hidden="true"></span>
+      <span class="gt-cartbar__tier" data-tier aria-hidden="true"></span>
+    </div>
+  </gt-cart-progress>
+
+  {{ 'cart-progress.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'cart-progress.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Spin to Win cart progress",
+  "target": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows how close the cart is to the Spin to Win threshold. Hidden automatically outside the campaign. Uses the same subtotal as the spin itself: after discounts, before shipping and tax."
+    },
+    {
+      "type": "text",
+      "id": "copy_remaining",
+      "label": "Below the threshold",
+      "info": "{amount} is replaced with what is still needed.",
+      "default": "Add {amount} more to unlock a spin on the wheel."
+    },
+    {
+      "type": "text",
+      "id": "copy_reached",
+      "label": "At or above the threshold",
+      "default": "You’ve unlocked a spin on the wheel after checkout."
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "text",
+      "id": "proxy_path",
+      "label": "App proxy path",
+      "info": "Must match the app proxy in shopify.app.toml. Leave as /apps/spin.",
+      "default": "/apps/spin"
+    }
+  ]
+}
+{% endschema %}

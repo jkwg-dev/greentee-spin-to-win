@@ -191,6 +191,14 @@ Spin page (storefront page + theme app extension block)
   -> POST /apps/spin/gift                { token, selection? }  adds a won gift to the order
   -> renders the actual wheel in HTML and JS
 
+Cart page and cart drawer (same theme app extension, second block)
+  -> GET  /apps/spin/campaign            { open, minSubtotal, currency }  (no token; cached 60s)
+  -> a progress bar toward the spin threshold, from cart.total_price (the
+     cart after discounts, before shipping and tax: the same basis as the
+     order's currentSubtotalPriceSet). Renders nothing unless mode is live
+     and the campaign window is open. One tier only; the boots tier widget
+     is separate and stays separate.
+
 Backend (Shopify app server)
   -> Admin GraphQL: order lookup, metafieldsSet, discountCodeBasicCreate,
      product variants + stock, orderEdit*, tagsAdd/tagsRemove

@@ -22,9 +22,13 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `extensions/spin-status/` — checkout UI extension (Preact + Polaris web components, API 2026-07).
   `src/ThankYou.tsx` is the full flow on `purchase.thank-you.block.render`;
   `src/OrderStatus.tsx` is display only on `customer-account.order-status.block.render`.
-- `extensions/spin-wheel/` — theme app extension: the wheel as a full-screen overlay block.
-  `blocks/spin-wheel.liquid` (markup + settings), `assets/spin-page.js` (states, spin, result),
-  `assets/spin-page.css`, and `assets/spin-wheel.js` (vendored `spin-wheel@5.0.2`, MIT, pinned).
+- `extensions/spin-wheel/` — the app's one theme app extension (Shopify allows a single one per
+  app), holding two blocks. `blocks/spin-wheel.liquid` is the wheel as a full-screen overlay
+  (`assets/spin-page.js`, `assets/spin-page.css`, and `assets/spin-wheel.js`, vendored
+  `spin-wheel@5.0.2`, MIT, pinned). `blocks/cart-progress.liquid` is the cart progress bar
+  toward the spin threshold (`assets/cart-progress.js`, `assets/cart-progress.css`).
+- `app/routes/apps.spin.campaign.tsx` — `GET /apps/spin/campaign`, the public, cached answer the
+  cart bar reads: whether the wheel is on right now and the threshold.
 
 ## Setup
 
@@ -131,6 +135,26 @@ face. Labels live in an HTML layer that rotates with the wheel, each printed on 
 turns with it: COUPON / 30% OFF / APPAREL for discounts, GFJ / GLOVES for gifts. A failed execute stops the
 wheel and shows Try again, which is safe because the server is idempotent. Reduced motion
 shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlice` for testers.
+
+## Cart progress bar (theme app extension block)
+
+Add the "Spin to Win cart progress" app block to the cart page section and to the cart drawer
+section (any section that accepts app blocks). It shows one tier, the spin threshold, with a
+bar and one line: how much more is needed, or that the customer has qualified. Nothing else is
+on it; the boots tier has its own widget on a different basis and the two stay separate.
+
+The subtotal is the cart's `total_price` (Liquid on render, `/cart.js` after changes): the cart
+after discounts and before shipping and tax, the same basis as the order's
+`currentSubtotalPriceSet` that spin eligibility reads, so the bar and the Thank you page agree.
+The bar is a custom element, so a drawer re-rendered over AJAX sets it up again with the new
+value, and the script also watches fetch and XMLHttpRequest calls to the cart endpoints and
+re-reads `/cart.js` after each, so copies the theme did not re-render update too.
+
+Whether to show at all comes from `GET /apps/spin/campaign`: mode `live` and inside the campaign
+window, using the same environment and shop-metafield config as the spin. Outside that the block
+renders nothing, so it can stay in the theme after the campaign. Liquid also renders nothing when
+the shop metafield says `off` or `test`, when the cart is presented in a currency other than the
+shop's, or when prices include tax, because the threshold could not be compared honestly.
 
 ## Support: one order ID tells the whole story
 
