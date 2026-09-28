@@ -47,7 +47,8 @@ layout deliberately over-represents gifts. Every slice awards something; there i
 slice (one was removed on purpose, so do not add a decorative slice back).
 
 Slices are coloured by what they award, not by position: discount slices are cream, gift slices
-alternate navy and green so two gift slices never touch in the same colour, and label text
+alternate green and navy in wheel order (so consecutive gifts never share a colour and each gift
+product, having two slices, shows once in each colour), and label text
 follows the background (navy on cream, cream on navy or green). Each slice carries a small
 "Discount" or "Free gift" chip. Result cards (spin page and Thank you page) share one layout:
 heading with the short reward name, dashed code box with a copy control, a full-width "Shop with

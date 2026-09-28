@@ -35,10 +35,20 @@ const TYPE = (t: string) => (t === "gift" ? "Free gift" : "Discount");
 const WHEEL_BASE = [
   { index: 1, label: "10% Off Clubs", icon: "club", rewardType: "discount" },
   { index: 2, label: "GFJ Gloves", icon: "glove", rewardType: "gift" },
-  { index: 3, label: "15% Off Accessories", icon: "bag", rewardType: "discount" },
+  {
+    index: 3,
+    label: "15% Off Accessories",
+    icon: "bag",
+    rewardType: "discount",
+  },
   { index: 4, label: "GFJ Club Brush", icon: "brush", rewardType: "gift" },
   { index: 5, label: "GFJ Socks", icon: "sock", rewardType: "gift" },
-  { index: 6, label: "30% Off Apparel", icon: "shirt", rewardType: "discount" },
+  {
+    index: 6,
+    label: "30% Off Apparel",
+    icon: "shirt",
+    rewardType: "discount",
+  },
   { index: 7, label: "GFJ Gloves", icon: "glove", rewardType: "gift" },
   { index: 8, label: "GFJ Club Brush", icon: "brush", rewardType: "gift" },
   { index: 9, label: "GFJ Socks", icon: "sock", rewardType: "gift" },
@@ -713,6 +723,17 @@ describe("spin page: colour, chips, odds and overlay", () => {
         expect(bgs[i]).not.toBe(bgs[i - 1]);
       }
     }
+    // Gifts alternate green, navy, green... in wheel order, starting green.
+    const giftBgs = WHEEL.map((w, i) => (w.rewardType === "gift" ? bgs[i] : null)).filter(Boolean);
+    expect(giftBgs).toEqual([GREEN, NAVY, GREEN, NAVY, GREEN, NAVY]);
+    // So each gift product (two slices each) shows once in each colour.
+    const byLabel = new Map<string, Set<string>>();
+    WHEEL.forEach((w, i) => {
+      if (w.rewardType !== "gift") return;
+      byLabel.set(w.label, (byLabel.get(w.label) ?? new Set()).add(bgs[i]));
+    });
+    for (const [label, colours] of byLabel)
+      expect([...colours].sort(), label).toEqual([NAVY, GREEN].sort());
     // Label text contrasts with its slice: navy on cream, cream on navy/green.
     const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
     labels.forEach((l, i) => {

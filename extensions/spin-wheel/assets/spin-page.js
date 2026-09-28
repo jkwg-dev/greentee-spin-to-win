@@ -58,20 +58,20 @@
    * and green so two gift slices never touch in the same colour. Text colour
    * follows the background so contrast holds on every combination.
    */
+  /**
+   * Gift slices alternate green and navy in wheel order (discount slices are
+   * cream and do not count). Consecutive gifts therefore never share a
+   * colour, and with two slices per gift in the reward table each gift
+   * product appears once in each colour.
+   */
   function paletteFor(slices) {
     var out = [];
-    var lastGift = null;
+    var gifts = 0;
     for (var i = 0; i < slices.length; i++) {
       if (slices[i].rewardType === "gift") {
-        var candidates = [cfg.colors.navy, cfg.colors.green];
-        var prevBg = i > 0 && slices[i - 1].rewardType === "gift" ? out[i - 1].bg : null;
-        var bg = candidates[0] === prevBg ? candidates[1] : candidates[0];
-        // Wrap-around: the last slice must also differ from the first.
-        if (i === slices.length - 1 && slices[0].rewardType === "gift" && out[0].bg === bg) {
-          bg = bg === candidates[0] ? candidates[1] : candidates[0];
-        }
+        var bg = gifts % 2 === 0 ? cfg.colors.green : cfg.colors.navy;
+        gifts++;
         out.push({ bg: bg, text: cfg.colors.cream });
-        lastGift = bg;
       } else {
         out.push({ bg: cfg.colors.cream, text: cfg.colors.navy });
       }
