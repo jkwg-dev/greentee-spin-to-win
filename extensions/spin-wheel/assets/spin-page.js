@@ -127,7 +127,7 @@
     stillPending: "Your order is still being confirmed. Please try again in a moment.",
     forceDenied: "That option isn't available. Press Try again to spin.",
     keepSafe: "Also on your order status page.",
-    giftIntro: "Added to this order at no charge.",
+    giftIntro: "It's on us. We'll add it to this order at no charge.",
     giftConfirm: "Add to my order",
     giftAdding: "Adding to your order…",
     giftAdded: "It ships with the rest of your items at no charge.",
