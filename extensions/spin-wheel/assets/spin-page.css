@@ -21,13 +21,19 @@
 :host,
 .gt-spin {
   --gtsw-navy: #1b2a3d;
-  --gtsw-cream: #efe9dc;
-  --gtsw-green: #2e5a3e;
-  --gtsw-gold: #c9a961;
+  --gtsw-rim: #2b6ed4;
+  --gtsw-rim-light: #6d93e0;
+  --gtsw-slice-a: #ffffff;
+  --gtsw-slice-b: #badff8;
+  --gtsw-slice-c: #8cc1ee;
+  --gtsw-slice-text: #111111;
+  --gtsw-bulb: #fff568;
+  --gtsw-hub: #1f5fbd;
   --gtsw-bg: #fbfbfa;
   --gtsw-bg-image: none;
   --gtsw-scrim: #000;
-  --gtsw-stage: min(100vw - 48px, 400px);
+  --gtsw-stage: min(100vw - 48px, 440px);
+  --gtsw-rim-w: calc(var(--gtsw-stage) * 0.075);
 }
 
 .gt-spin {
@@ -157,6 +163,12 @@ html.gt-spin-open body {
 }
 
 /* ---------------------------------------------------------------- wheel */
+/*
+ * The wheel: a blue rim studded with lights around a white / light-blue
+ * face, a blue START hub, and bold black labels that turn with their slice.
+ * Everything is sized from --gtsw-stage; the rim lives inside the stage so
+ * the stage's own width is the layout footprint.
+ */
 .gt-spin__stage {
   position: relative;
   width: var(--gtsw-stage);
@@ -164,79 +176,111 @@ html.gt-spin-open body {
   margin: 24px auto 20px;
 }
 
+.gt-spin__wheel,
+.gt-spin__labels {
+  position: absolute;
+  inset: var(--gtsw-rim-w);
+  border-radius: 50%;
+}
+
 .gt-spin__wheel {
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/*
+ * Drawn with inset shadows rather than a border so the bulbs, absolutely
+ * positioned inside, are placed against the full circle.
+ */
+.gt-spin__rim {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  overflow: hidden;
-}
-
-.gt-spin__rim {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 3px solid var(--gtsw-gold);
+  box-shadow:
+    inset 0 0 0 var(--gtsw-rim-w) var(--gtsw-rim),
+    inset 0 0 0 calc(var(--gtsw-rim-w) + var(--gtsw-stage) * 0.006) var(--gtsw-rim-light),
+    0 0 0 calc(var(--gtsw-stage) * 0.006) var(--gtsw-rim-light),
+    0 10px 24px rgba(0, 0, 0, 0.25);
   pointer-events: none;
   z-index: 3;
 }
 
-.gt-spin__labels {
+/* Marquee bulbs sit on the rim's centre line; the script positions each one. */
+.gt-spin__bulb {
   position: absolute;
-  inset: 0;
+  width: calc(var(--gtsw-stage) * 0.042);
+  height: calc(var(--gtsw-stage) * 0.042);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fffce6 0%, var(--gtsw-bulb) 42%, #f1b83a 100%);
+  box-shadow:
+    0 0 calc(var(--gtsw-stage) * 0.018) rgba(255, 228, 110, 0.95),
+    inset 0 0 1px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+/* While the wheel spins the bulbs chase; still under reduced motion. */
+@keyframes gtsw-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.gt-spin--spinning .gt-spin__bulb:nth-child(odd) {
+  animation: gtsw-blink 0.5s steps(1) infinite;
+}
+
+.gt-spin--spinning .gt-spin__bulb:nth-child(even) {
+  animation: gtsw-blink 0.5s steps(1) 0.25s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-spin--spinning .gt-spin__bulb {
+    animation: none;
+  }
+}
+
+.gt-spin__labels {
   pointer-events: none;
   z-index: 2;
   will-change: transform;
 }
 
+/* One label per slice, turning with it: "up" points at the rim. */
 .gt-spin__label {
   position: absolute;
-  width: calc(var(--gtsw-stage) * 0.22);
+  width: calc(var(--gtsw-stage) * 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2em;
-  font-size: calc(var(--gtsw-stage) * 0.03);
-  font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
+  gap: 0.15em;
+  color: var(--gtsw-slice-text);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   text-align: center;
   will-change: transform;
 }
 
-.gt-spin__label svg {
-  width: calc(var(--gtsw-stage) * 0.07);
-  height: calc(var(--gtsw-stage) * 0.07);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* Uppercase on the spans themselves: the isolation reset above clears it on elements. */
+.gt-spin__label > span {
+  text-transform: uppercase;
 }
 
-/* Reward type chip on each slice: quiet, the reward name stays dominant. */
-.gt-spin__tag {
-  display: inline-block;
-  margin-top: 0.35em;
-  padding: 0.15em 0.55em;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 0.72em;
-  font-weight: 500;
+.gt-spin__label-eyebrow {
+  font-size: calc(var(--gtsw-stage) * 0.021);
+  font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: none;
-  opacity: 0.8;
 }
 
-/* On the wheel: pinned to the arc edge, upright, never wrapping. */
-.gt-spin__tag--arc {
-  position: absolute;
-  margin: 0;
-  padding: 0.12em 0.5em;
-  font-size: calc(var(--gtsw-stage) * 0.024);
-  white-space: nowrap;
-  opacity: 0.9;
-  will-change: transform;
+.gt-spin__label-main {
+  font-size: calc(var(--gtsw-stage) * 0.037);
+  line-height: 0.95;
+}
+
+.gt-spin__label-sub {
+  font-size: calc(var(--gtsw-stage) * 0.02);
+  letter-spacing: 0.02em;
 }
 
 /* Odds disclosure: small and secondary. */
@@ -266,27 +310,35 @@ html.gt-spin-open body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(var(--gtsw-stage) * 0.16);
-  height: calc(var(--gtsw-stage) * 0.16);
+  width: calc(var(--gtsw-stage) * 0.21);
+  height: calc(var(--gtsw-stage) * 0.21);
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--gtsw-cream);
-  border: 3px solid var(--gtsw-gold);
+  background: radial-gradient(circle at 40% 32%, #4a8ce6 0%, var(--gtsw-hub) 55%, #17478f 100%);
+  border: calc(var(--gtsw-stage) * 0.012) solid #2f6fc9;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.35),
+    inset 0 2px 3px rgba(255, 255, 255, 0.4);
   z-index: 5;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.gt-spin__hub:active {
+  transform: translate(-50%, -50%) scale(0.97);
 }
 
 .gt-spin__hub-text {
-  font-weight: 600;
-  font-size: calc(var(--gtsw-stage) * 0.03);
+  font-weight: 800;
+  font-size: calc(var(--gtsw-stage) * 0.036);
   line-height: 1.1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--gtsw-navy);
-  padding: 0 0.4em;
+  color: #fff;
+  padding: 0 0.3em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .gt-spin__hub-text:empty {
@@ -295,12 +347,13 @@ html.gt-spin-open body {
 
 .gt-spin__pointer {
   position: absolute;
-  top: calc(var(--gtsw-stage) * -0.035);
+  top: calc(var(--gtsw-stage) * 0.005);
   left: 50%;
   width: calc(var(--gtsw-stage) * 0.1);
   height: calc(var(--gtsw-stage) * 0.115);
   transform: translateX(-50%);
-  color: var(--gtsw-navy);
+  color: #fff;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
   z-index: 6;
   pointer-events: none;
 }

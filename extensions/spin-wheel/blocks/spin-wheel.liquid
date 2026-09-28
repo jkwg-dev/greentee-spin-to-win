@@ -23,9 +23,14 @@
   data-back-label="{{ block.settings.back_label | default: 'Back to your order' | escape }}"
   style="
     --gtsw-navy: {{ block.settings.color_navy | default: '#1b2a3d' }};
-    --gtsw-cream: {{ block.settings.color_cream | default: '#efe9dc' }};
-    --gtsw-green: {{ block.settings.color_green | default: '#2e5a3e' }};
-    --gtsw-gold: {{ block.settings.color_gold | default: '#c9a961' }};
+    --gtsw-rim: {{ block.settings.color_rim | default: '#2b6ed4' }};
+    --gtsw-rim-light: {{ block.settings.color_rim_light | default: '#6d93e0' }};
+    --gtsw-slice-a: {{ block.settings.color_slice_a | default: '#ffffff' }};
+    --gtsw-slice-b: {{ block.settings.color_slice_b | default: '#badff8' }};
+    --gtsw-slice-c: {{ block.settings.color_slice_c | default: '#8cc1ee' }};
+    --gtsw-slice-text: {{ block.settings.color_slice_text | default: '#111111' }};
+    --gtsw-bulb: {{ block.settings.color_bulb | default: '#fff568' }};
+    --gtsw-hub: {{ block.settings.color_hub | default: '#1f5fbd' }};
     --gtsw-bg: {{ block.settings.background_color | default: '#fbfbfa' }};
     {% if bg_image != '' %}--gtsw-bg-image: url('{{ bg_image }}');{% endif %}
   "
@@ -49,14 +54,15 @@
       <div class="gt-spin__pointer" aria-hidden="true">
         {%- comment -%} SVG so the pointer can carry a white stroke and stay visible on a same-coloured slice. {%- endcomment -%}
         <svg viewBox="0 0 40 46" focusable="false">
-          <path d="M3 3h34L20 43z" fill="currentColor" stroke="#fff" stroke-width="3" stroke-linejoin="round" />
+          <path d="M3 3h34L20 43z" fill="currentColor" style="stroke: var(--gtsw-hub)" stroke-width="3" stroke-linejoin="round" />
         </svg>
       </div>
-      <div class="gt-spin__rim" aria-hidden="true"></div>
+      <div class="gt-spin__rim" data-rim aria-hidden="true"></div>
       <div class="gt-spin__wheel" data-wheel role="img" aria-label="Prize wheel"></div>
       <div class="gt-spin__labels" data-labels aria-hidden="true"></div>
-      <div class="gt-spin__hub" aria-hidden="true">
-        <span class="gt-spin__hub-text">{{ block.settings.hub_text | escape }}</span>
+      {%- comment -%} Decorative twin of the Spin button: tapping the centre spins too. {%- endcomment -%}
+      <div class="gt-spin__hub" data-hub aria-hidden="true">
+        <span class="gt-spin__hub-text">{{ block.settings.hub_text | default: 'START' | escape }}</span>
       </div>
     </div>
 
@@ -117,8 +123,9 @@
     {
       "type": "text",
       "id": "hub_text",
-      "label": "Centre text (optional)",
-      "info": "Leave blank for a plain centre."
+      "label": "Centre text",
+      "info": "Blank shows START.",
+      "default": "START"
     },
     {
       "type": "text",
@@ -166,26 +173,57 @@
     {
       "type": "color",
       "id": "color_navy",
-      "label": "Navy slices and text",
+      "label": "Page text and buttons",
       "default": "#1b2a3d"
     },
     {
       "type": "color",
-      "id": "color_cream",
-      "label": "Cream slices and text",
-      "default": "#efe9dc"
+      "id": "color_rim",
+      "label": "Rim",
+      "default": "#2b6ed4"
     },
     {
       "type": "color",
-      "id": "color_green",
-      "label": "Green slices",
-      "default": "#2e5a3e"
+      "id": "color_rim_light",
+      "label": "Rim highlight",
+      "default": "#6d93e0"
     },
     {
       "type": "color",
-      "id": "color_gold",
-      "label": "Ring and centre",
-      "default": "#c9a961"
+      "id": "color_bulb",
+      "label": "Rim lights",
+      "default": "#fff568"
+    },
+    {
+      "type": "color",
+      "id": "color_slice_a",
+      "label": "Discount slices",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "color_slice_b",
+      "label": "Gift slices",
+      "default": "#badff8"
+    },
+    {
+      "type": "color",
+      "id": "color_slice_c",
+      "label": "Gift slices (alternate)",
+      "info": "Used where two gift slices sit side by side.",
+      "default": "#8cc1ee"
+    },
+    {
+      "type": "color",
+      "id": "color_slice_text",
+      "label": "Slice text",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "color_hub",
+      "label": "Centre button",
+      "default": "#1f5fbd"
     },
     {
       "type": "header",

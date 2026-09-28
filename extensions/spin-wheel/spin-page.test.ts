@@ -247,8 +247,8 @@ describe("spin page: theme isolation", () => {
       const items = p.wheel()!.items as Array<{ backgroundColor: string }>;
       const bgs = new Set(items.map((i) => i.backgroundColor.toLowerCase()));
       expect(bgs.has("red")).toBe(false);
-      expect(bgs.has("#efe9dc")).toBe(true);
-      expect(bgs.has("#1b2a3d")).toBe(true);
+      expect(bgs.has("#ffffff")).toBe(true);
+      expect(bgs.has("#badff8")).toBe(true);
     } finally {
       html.removeAttribute("style");
     }
@@ -703,11 +703,12 @@ describe("spin page: gifts", () => {
 });
 
 describe("spin page: colour, chips, odds and overlay", () => {
-  const CREAM = "#efe9dc";
-  const NAVY = "#1b2a3d";
-  const GREEN = "#2e5a3e";
+  const WHITE = "#ffffff";
+  const BLUE = "#badff8";
+  const BLUE2 = "#8cc1ee";
+  const TEXT = "#111111";
 
-  it("colours discounts cream and alternates navy/green across gifts so no two touch", async () => {
+  it("colours discounts white and alternates two blues across gifts so no two touch", async () => {
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",
       state: { status: 200, body: ELIGIBLE },
@@ -715,53 +716,67 @@ describe("spin page: colour, chips, odds and overlay", () => {
     const items = p.wheel()!.items as Array<{ backgroundColor: string }>;
     const bgs = items.map((i) => i.backgroundColor.toLowerCase());
     WHEEL.forEach((w, i) => {
-      if (w.rewardType === "discount") expect(bgs[i]).toBe(CREAM);
-      else expect([NAVY, GREEN]).toContain(bgs[i]);
+      if (w.rewardType === "discount") expect(bgs[i]).toBe(WHITE);
+      else expect([BLUE, BLUE2]).toContain(bgs[i]);
     });
     for (let i = 1; i < bgs.length; i++) {
       if (WHEEL[i].rewardType === "gift" && WHEEL[i - 1].rewardType === "gift") {
         expect(bgs[i]).not.toBe(bgs[i - 1]);
       }
     }
-    // Gifts alternate green, navy, green... in wheel order, starting green.
+    // Gifts alternate light blue, deeper blue... in wheel order.
     const giftBgs = WHEEL.map((w, i) => (w.rewardType === "gift" ? bgs[i] : null)).filter(Boolean);
-    expect(giftBgs).toEqual([GREEN, NAVY, GREEN, NAVY, GREEN, NAVY]);
-    // So each gift product (two slices each) shows once in each colour.
-    const byLabel = new Map<string, Set<string>>();
-    WHEEL.forEach((w, i) => {
-      if (w.rewardType !== "gift") return;
-      byLabel.set(w.label, (byLabel.get(w.label) ?? new Set()).add(bgs[i]));
-    });
-    for (const [label, colours] of byLabel)
-      expect([...colours].sort(), label).toEqual([NAVY, GREEN].sort());
-    // Label text contrasts with its slice: navy on cream, cream on navy/green.
+    expect(giftBgs).toEqual([BLUE, BLUE2, BLUE, BLUE2, BLUE, BLUE2]);
+    // Every label is black, whatever the slice.
     const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
-    labels.forEach((l, i) => {
-      const expected = bgs[i] === CREAM ? NAVY : CREAM;
-      expect(l.style.color.replace(/\s/g, "")).toBe(hexToRgb(expected));
-    });
+    labels.forEach((l) => expect(l.style.color.replace(/\s/g, "")).toBe(hexToRgb(TEXT)));
   });
 
-  it("puts a reward-type badge on the outer edge of every slice, outside the label", async () => {
+  it("prints COUPON / 30% OFF / APPAREL on discounts and GFJ / GLOVES on gifts, no icons or chips", async () => {
     await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
-    const tags = [...dom().querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
-    expect(tags.map((c) => c.textContent)).toEqual(WHEEL.map((w) => w.typeLabel));
-    expect(dom().querySelectorAll(".gt-spin__label .gt-spin__tag")).toHaveLength(0);
-    // Further from the centre than the label at the same angle.
     const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
-    const dist = (e: HTMLElement) =>
-      Math.hypot(parseFloat(e.style.left) - 50, parseFloat(e.style.top) - 50);
-    tags.forEach((t, i) => expect(dist(t)).toBeGreaterThan(dist(labels[i])));
+    const lines = (l: HTMLElement) => [
+      l.querySelector(".gt-spin__label-eyebrow")?.textContent ?? "",
+      l.querySelector(".gt-spin__label-main")?.textContent ?? "",
+      l.querySelector(".gt-spin__label-sub")?.textContent ?? "",
+    ];
+    expect(lines(labels[0])).toEqual(["Coupon", "10% Off", "Clubs"]);
+    expect(lines(labels[1])).toEqual(["GFJ", "Gloves", ""]);
+    expect(lines(labels[2])).toEqual(["Coupon", "15% Off", "Accessories"]);
+    expect(lines(labels[3])).toEqual(["GFJ", "Club Brush", ""]);
+    expect(lines(labels[5])).toEqual(["Coupon", "30% Off", "Apparel"]);
+    expect(dom().querySelectorAll(".gt-spin__label svg")).toHaveLength(0);
+    expect(dom().querySelectorAll(".gt-spin__tag--arc")).toHaveLength(0);
   });
 
-  it("tilts each badge along its arc, turning with the wheel, no flipping", async () => {
+  it("turns each label with its slice while the layer follows the wheel", async () => {
     await mount({ url: "/pages/spin-to-win?token=ok", state: { status: 200, body: ELIGIBLE } });
-    const tags = [...dom().querySelectorAll<HTMLElement>("[data-labels] .gt-spin__tag--arc")];
+    const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
     // Slice centres on a nine-slice wheel are 20°, 60°, 100°, ... in the wheel's frame.
-    tags.forEach((t, i) => expect(t.style.transform).toContain(`rotate(${i * 40 + 20}deg)`));
-    // Labels stay upright regardless (the wheel rests at -20°).
-    const labels = [...dom().querySelectorAll<HTMLElement>(".gt-spin__label")];
-    labels.forEach((l) => expect(l.style.transform).toContain("rotate(20deg)"));
+    labels.forEach((l, i) => expect(l.style.transform).toContain(`rotate(${i * 40 + 20}deg)`));
+    // The wheel rests at -20° so slice 1 sits upright under the pointer.
+    expect(dom().querySelector<HTMLElement>("[data-labels]")!.style.transform).toBe(
+      "rotate(-20deg)",
+    );
+  });
+
+  it("studs the rim with 20 bulbs and shows START in the hub, which also spins", async () => {
+    const p = await mount({
+      url: "/pages/spin-to-win?token=ok",
+      state: { status: 200, body: ELIGIBLE },
+    });
+    const bulbs = [...dom().querySelectorAll<HTMLElement>("[data-rim] .gt-spin__bulb")];
+    expect(bulbs).toHaveLength(20);
+    // First bulb at the top, evenly spaced around the rim's centre line.
+    expect(bulbs[0].style.left).toBe("50%");
+    expect(parseFloat(bulbs[0].style.top)).toBeCloseTo(50 - 48.125, 3);
+    expect(dom().querySelector(".gt-spin__hub-text")?.textContent).toBe("START");
+    expect(p.calls.map((c) => c.m)).toEqual([]);
+    p.el("[data-hub]").click();
+    await flush();
+    expect(p.calls.map((c) => c.m)).toEqual(["spin", "spinToItem"]);
+    // The bulbs chase only while spinning.
+    expect(p.el("[data-gt-spin]").classList.contains("gt-spin--spinning")).toBe(false);
   });
 
   it("shows no reward-type chip on the result card", async () => {

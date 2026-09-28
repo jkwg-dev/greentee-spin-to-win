@@ -31,6 +31,8 @@
     retry: root.querySelector("[data-retry]"),
     result: root.querySelector("[data-result]"),
     close: root.querySelector("[data-close]"),
+    rim: root.querySelector("[data-rim]"),
+    hub: root.querySelector("[data-hub]"),
     odds: root.querySelector("[data-odds]"),
     oddsLine: root.querySelector("[data-odds-line]"),
   };
@@ -47,33 +49,31 @@
     overlay: root.getAttribute("data-overlay") === "true",
     colors: {
       navy: cssVar("--gtsw-navy", "#1b2a3d"),
-      cream: cssVar("--gtsw-cream", "#efe9dc"),
-      green: cssVar("--gtsw-green", "#2e5a3e"),
-      gold: cssVar("--gtsw-gold", "#c9a961"),
+      sliceA: cssVar("--gtsw-slice-a", "#ffffff"),
+      sliceB: cssVar("--gtsw-slice-b", "#badff8"),
+      sliceC: cssVar("--gtsw-slice-c", "#8cc1ee"),
+      sliceText: cssVar("--gtsw-slice-text", "#111111"),
     },
   };
 
   /**
-   * Slice colours carry meaning: discounts are cream, gifts alternate navy
-   * and green so two gift slices never touch in the same colour. Text colour
-   * follows the background so contrast holds on every combination.
-   */
-  /**
-   * Gift slices alternate green and navy in wheel order (discount slices are
-   * cream and do not count). Consecutive gifts therefore never share a
-   * colour, and with two slices per gift in the reward table each gift
-   * product appears once in each colour.
+   * Discount slices are white; gift slices are light blue, alternating with
+   * a second blue in wheel order so two gift slices never touch in the same
+   * colour (and with two slices per gift, each gift shows once in each).
+   * Text is black on every slice.
    */
   function paletteFor(slices) {
     var out = [];
     var gifts = 0;
     for (var i = 0; i < slices.length; i++) {
       if (slices[i].rewardType === "gift") {
-        var bg = gifts % 2 === 0 ? cfg.colors.green : cfg.colors.navy;
+        out.push({
+          bg: gifts % 2 === 0 ? cfg.colors.sliceB : cfg.colors.sliceC,
+          text: cfg.colors.sliceText,
+        });
         gifts++;
-        out.push({ bg: bg, text: cfg.colors.cream });
       } else {
-        out.push({ bg: cfg.colors.cream, text: cfg.colors.navy });
+        out.push({ bg: cfg.colors.sliceA, text: cfg.colors.sliceText });
       }
     }
     return out;
@@ -81,19 +81,6 @@
 
   var palette = [];
   var typeLabels = { discount: "Discount", gift: "Free gift" };
-
-  var ICONS = {
-    club: '<path d="M14.5 3 9 16.5"/><path d="M9 16.5c-2 1.2-1.7 4.1.8 4.4 1.7.2 3.3-.6 4.8-2.3l1.6-1.8-4.4-1.9c-1-.4-2.1-.2-2.8.6z"/>',
-    glove:
-      '<path d="M7 21h6.5a3.5 3.5 0 0 0 3.5-3.5V11a1.5 1.5 0 0 0-3 0V9.5a1.5 1.5 0 0 0-3 0V7.5a1.5 1.5 0 0 0-3 0V15l-2.3-2.3a1.4 1.4 0 0 0-2 2L7 18z"/>',
-    brush: '<path d="M4 8h9v6H4z"/><path d="M13 11h7"/><path d="M6 14v4M8.5 14v5M11 14v4"/>',
-    sock: '<path d="M8 3h7v9.5l3.3 3.3a3.4 3.4 0 0 1-4.8 4.8L9 16.1A3 3 0 0 1 8 13.9z"/><path d="M8 6.5h7"/>',
-    shirt:
-      '<path d="M8.5 4 12 5.5 15.5 4l4.2 2.8-2.2 3.2-1.5-.8V20h-8V9.2l-1.5.8-2.2-3.2z"/><path d="M12 5.5v4"/>',
-    bag: '<path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
-    trophy:
-      '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 3M16 6h3a3 3 0 0 1-3 3"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 16h4v4h-4z"/>',
-  };
 
   /**
    * Where the primary button sends a discount winner. Shopify's /discount/CODE
@@ -153,8 +140,9 @@
   var SPIN_DURATION = 5200;
   var SPIN_REVOLUTIONS = 4;
   var REDUCED_DURATION = 700;
-  var LABEL_RADIUS = 0.6; // fraction of the wheel radius: reward name and icon
-  var TAG_RADIUS = 0.875; // reward-type badge sits on the outer edge of the arc
+  var LABEL_RADIUS = 0.66; // fraction of the wheel radius where a label is centred
+  var BULB_COUNT = 20;
+  var BULB_RADIUS = 0.9625; // fraction of the stage half-size: the rim's centre line
   var sliceDeg = 36; // recomputed from the number of slices the server sends
 
   var params = new URLSearchParams(window.location.search);
@@ -166,8 +154,6 @@
   var wheel = null;
   var wheelReady = false;
   var labelEls = [];
-  var tagEls = [];
-  var tagCentres = []; // wheel angle (deg, 0 = top, clockwise) of each badge
   var busy = false;
   var revealTimer = null;
   var lastAction = null; // "load" | "spin", for the retry button
@@ -386,42 +372,58 @@
     requestAnimationFrame(tick);
   }
 
+  /**
+   * Label copy per slice. Discounts read COUPON / 30% OFF / APPAREL, gifts
+   * GFJ / GLOVES, from the wheel label the server sends ("30% Off Apparel",
+   * "GFJ Gloves"). Anything else prints as one line.
+   */
+  function labelLines(s) {
+    var text = String(s.label || "");
+    var m;
+    if (s.rewardType === "discount" && (m = /^(\d+%\s*off)\s+(.+)$/i.exec(text))) {
+      return { eyebrow: "Coupon", main: m[1], sub: m[2] };
+    }
+    if (s.rewardType === "gift" && (m = /^GFJ\s+(.+)$/i.exec(text))) {
+      return { eyebrow: "GFJ", main: m[1], sub: "" };
+    }
+    return { eyebrow: "", main: text, sub: "" };
+  }
+
   function buildLabels(slices) {
     var layer = els.labels;
     while (layer.firstChild) layer.removeChild(layer.firstChild);
-    tagEls = [];
-    tagCentres = [];
     labelEls = slices.map(function (s, i) {
       var p = palette[i];
       var centre = i * sliceDeg + sliceDeg / 2; // wheel angle, 0 = top, clockwise
       var rad = (centre * Math.PI) / 180;
+      var lines = labelLines(s);
       var label = el("div", "gt-spin__label");
       label.style.left = 50 + LABEL_RADIUS * 50 * Math.sin(rad) + "%";
       label.style.top = 50 - LABEL_RADIUS * 50 * Math.cos(rad) + "%";
       label.style.color = p.text;
-      var icon = ICONS[s.icon] || ICONS.trophy;
-      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("viewBox", "0 0 24 24");
-      svg.setAttribute("aria-hidden", "true");
-      svg.innerHTML = icon;
-      label.appendChild(svg);
-      label.appendChild(el("span", "gt-spin__label-text", String(s.label || "")));
+      // Printed on the slice: turns with it, "up" towards the rim. Labels in
+      // the lower half read upside down, as on a physical wheel.
+      label.style.transform = "translate(-50%, -50%) rotate(" + centre + "deg)";
+      if (lines.eyebrow) label.appendChild(el("span", "gt-spin__label-eyebrow", lines.eyebrow));
+      label.appendChild(el("span", "gt-spin__label-main", lines.main));
+      if (lines.sub) label.appendChild(el("span", "gt-spin__label-sub", lines.sub));
       layer.appendChild(label);
-
-      // Reward-type badge on the edge of the arc, same angle, larger radius.
-      var tag = el(
-        "span",
-        "gt-spin__tag gt-spin__tag--arc",
-        s.typeLabel || typeLabels[s.rewardType] || "",
-      );
-      tag.style.left = 50 + TAG_RADIUS * 50 * Math.sin(rad) + "%";
-      tag.style.top = 50 - TAG_RADIUS * 50 * Math.cos(rad) + "%";
-      tag.style.color = p.text;
-      layer.appendChild(tag);
-      tagEls.push(tag);
-      tagCentres.push(centre);
       return label;
     });
+    buildBulbs();
+  }
+
+  /** Marquee bulbs around the rim. Static: the rim does not turn. */
+  function buildBulbs() {
+    if (!els.rim) return;
+    while (els.rim.firstChild) els.rim.removeChild(els.rim.firstChild);
+    for (var i = 0; i < BULB_COUNT; i++) {
+      var rad = ((i * 360) / BULB_COUNT) * (Math.PI / 180);
+      var bulb = el("span", "gt-spin__bulb");
+      bulb.style.left = 50 + BULB_RADIUS * 50 * Math.sin(rad) + "%";
+      bulb.style.top = 50 - BULB_RADIUS * 50 * Math.cos(rad) + "%";
+      els.rim.appendChild(bulb);
+    }
   }
 
   var lastRotation = null;
@@ -432,14 +434,10 @@
     if (!force && r === lastRotation) return;
     lastRotation = r;
     els.labels.style.transform = "rotate(" + r + "deg)";
-    var counter = "translate(-50%, -50%) rotate(" + -r + "deg)";
-    for (var i = 0; i < labelEls.length; i++) labelEls[i].style.transform = counter;
-    // Badges are printed on the wheel: tangent to the rim at their slice's
-    // centre, turning with it. Ones in the lower half read upside down, as
-    // on a physical wheel; that is intended.
-    for (var j = 0; j < tagEls.length; j++) {
-      tagEls[j].style.transform = "translate(-50%, -50%) rotate(" + tagCentres[j] + "deg)";
-    }
+  }
+
+  function setSpinning(on) {
+    root.classList.toggle("gt-spin--spinning", !!on);
   }
 
   function tick() {
@@ -448,6 +446,7 @@
   }
 
   function onWheelRest() {
+    setSpinning(false);
     if (!pendingReveal) return;
     var reveal = pendingReveal;
     pendingReveal = null;
@@ -880,6 +879,7 @@
     setStatus(COPY.spinning, false);
     // Idle spin while we wait for the server (rotationResistance is 0, so it keeps going).
     if (!reducedMotion) wheel.spin(220);
+    setSpinning(true);
 
     var body = { token: token };
     if (forceSlice) body.forceSlice = forceSlice;
@@ -889,22 +889,26 @@
         // A real customer edited the URL. Drop the parameter, say so plainly,
         // and let Try again run a normal spin. The wheel is stopped, not stuck.
         wheel.stop();
+        setSpinning(false);
         busy = false;
         forceSlice = null;
         return renderError(COPY.forceDenied, "spin");
       }
       if (r.status === 401 || r.status === 403) {
         wheel.stop();
+        setSpinning(false);
         busy = false;
         return renderInvalid();
       }
       if (r.ok && r.body && r.body.campaignOpen === false) {
         wheel.stop();
+        setSpinning(false);
         busy = false;
         return renderClosed();
       }
       if (!r.ok || !r.body || !r.body.result) {
         wheel.stop();
+        setSpinning(false);
         busy = false;
         var msg = r.body && r.body.message && r.status === 409 ? r.body.message : COPY.spinFailed;
         if (r.status === 409) return renderIneligible(msg);
@@ -922,6 +926,12 @@
   els.spin.addEventListener("click", function () {
     spin();
   });
+  if (els.hub) {
+    els.hub.addEventListener("click", function () {
+      if (!els.spin.hidden && !els.spin.disabled) els.spin.click();
+    });
+  }
+
   els.retry.addEventListener("click", function () {
     if (busy) return;
     if (lastAction === "spin" && wheelReady) spin();
