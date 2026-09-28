@@ -599,7 +599,7 @@ describe("spin page: gifts", () => {
       options: [],
       combinations: [],
       preselect: null,
-      note: "Colour is randomly selected.",
+      note: "We'll pick the colour from what's in stock.",
     };
     const p = await mount({
       url: "/pages/spin-to-win?token=ok",

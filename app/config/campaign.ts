@@ -314,7 +314,7 @@ export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
     fixedOptions: {},
     customerOptions: [],
     pickedOption: "Colour",
-    note: "Colour is randomly selected.",
+    note: "We'll pick the colour from what's in stock.",
   },
   gift_brush: {
     rewardKey: "gift_brush",
@@ -323,7 +323,7 @@ export const GIFT_CATALOG: Readonly<Record<GiftKey, GiftProduct>> = {
     fixedOptions: {},
     customerOptions: [],
     pickedOption: "Colour",
-    note: "Colour is randomly selected.",
+    note: "We'll pick the colour from what's in stock.",
   },
 };
 
