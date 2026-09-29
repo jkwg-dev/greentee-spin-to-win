@@ -186,9 +186,15 @@
     self.proxyPath = (self.getAttribute("data-proxy-path") || "/apps/spin").replace(/\/+$/, "");
     // The value the theme rendered is right for this render; a drawer
     // re-rendered over AJAX carries the new cart in this attribute too.
-    var rendered = Number(self.getAttribute("data-subtotal"));
-    if (!isNaN(rendered))
-      cart = { subtotal: rendered, currency: self.getAttribute("data-currency") };
+    var attr = self.getAttribute("data-subtotal");
+    if (attr !== null && attr !== "" && !isNaN(Number(attr))) {
+      cart = { subtotal: Number(attr), currency: self.getAttribute("data-currency") };
+    } else {
+      // Injected by the embed: nothing was rendered for this cart, so read it.
+      // The drawer only re-renders because the cart changed, so a cached
+      // value could be stale.
+      refreshCart();
+    }
     watchCart();
     loadConfig(self.proxyPath).then(function () {
       self.render();
@@ -215,6 +221,11 @@
     }
     var threshold = Math.round(config.minSubtotal * 100);
     var subtotal = Math.max(0, cart.subtotal);
+    // An empty cart gets no nudge; the drawer's own empty state does the talking.
+    if (subtotal <= 0) {
+      this.hidden = true;
+      return;
+    }
     var reached = subtotal >= threshold;
     var pct = threshold > 0 ? Math.min(100, Math.round((subtotal / threshold) * 1000) / 10) : 100;
     var line = this.querySelector("[data-line]");
@@ -239,4 +250,95 @@
   };
 
   window.customElements.define("gt-cart-progress", CartProgress);
+
+  /**
+   * App embed mode. The embed renders a <template> with the element inside
+   * and two targets (drawer, page). Clone it next to each target that
+   * exists, and do it again whenever the theme swaps that part of the DOM,
+   * which is what an AJAX cart drawer does on every change.
+   */
+  function setupEmbed() {
+    var tpl = document.querySelector("template[data-gt-cartbar-template]");
+    if (!tpl || !tpl.content) return;
+    var targets = [
+      {
+        sel: tpl.getAttribute("data-drawer-selector"),
+        pos: tpl.getAttribute("data-drawer-position"),
+      },
+      { sel: tpl.getAttribute("data-page-selector"), pos: tpl.getAttribute("data-page-position") },
+    ];
+    var placed = typeof WeakMap === "function" ? new WeakMap() : null;
+
+    function insert(target, pos) {
+      var node = tpl.content.firstElementChild.cloneNode(true);
+      node.setAttribute("data-gt-cartbar-embed", "");
+      if (pos === "before") target.parentNode.insertBefore(node, target);
+      else if (pos === "prepend") target.insertBefore(node, target.firstChild);
+      else if (pos === "append") target.appendChild(node);
+      else target.parentNode.insertBefore(node, target.nextSibling);
+      return node;
+    }
+
+    /** Is there already a bar where this target's bar would go? Checked in the DOM, not just memory. */
+    function hasBar(target, pos) {
+      var n =
+        pos === "before"
+          ? target.previousElementSibling
+          : pos === "prepend"
+            ? target.firstElementChild
+            : pos === "append"
+              ? target.lastElementChild
+              : target.nextElementSibling;
+      return !!(n && n.hasAttribute && n.hasAttribute("data-gt-cartbar-embed"));
+    }
+
+    function inject() {
+      for (var i = 0; i < targets.length; i++) {
+        var sel = (targets[i].sel || "").trim();
+        if (!sel) continue;
+        var target;
+        try {
+          target = document.querySelector(sel);
+        } catch (e) {
+          continue; // a bad selector typed into the setting
+        }
+        if (!target) continue;
+        var existing = placed && placed.get(target);
+        if (existing && existing.isConnected) continue;
+        if (hasBar(target, targets[i].pos)) continue;
+        var node = insert(target, targets[i].pos);
+        if (placed) placed.set(target, node);
+      }
+    }
+
+    var scheduled = false;
+    function schedule() {
+      if (scheduled) return;
+      scheduled = true;
+      (window.requestAnimationFrame || setTimeout)(function () {
+        scheduled = false;
+        inject();
+      });
+    }
+
+    inject();
+    if (window.MutationObserver) {
+      // One watcher per page. If the script somehow runs twice (a theme that
+      // loads it in two places), the later run replaces the earlier watcher.
+      if (window.__gtswCartbarObserver) window.__gtswCartbarObserver.disconnect();
+      var observer = new MutationObserver(function (mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          if (mutations[i].addedNodes.length || mutations[i].removedNodes.length) {
+            schedule();
+            return;
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.__gtswCartbarObserver = observer;
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setupEmbed);
+  else setupEmbed();
 })();

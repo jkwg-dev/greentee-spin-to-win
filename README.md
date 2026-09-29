@@ -26,7 +26,9 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
   app), holding two blocks. `blocks/spin-wheel.liquid` is the wheel as a full-screen overlay
   (`assets/spin-page.js`, `assets/spin-page.css`, and `assets/spin-wheel.js`, vendored
   `spin-wheel@5.0.2`, MIT, pinned). `blocks/cart-progress.liquid` is the cart progress bar
-  toward the spin threshold (`assets/cart-progress.js`, `assets/cart-progress.css`).
+  toward the spin threshold (`assets/cart-progress.js`, `assets/cart-progress.css`), and
+  `blocks/cart-progress-embed.liquid` is the same bar as an app embed for themes whose cart
+  drawer takes no app blocks.
 - `app/routes/apps.spin.campaign.tsx` — `GET /apps/spin/campaign`, the public, cached answer the
   cart bar reads: whether the wheel is on right now and the threshold.
 
@@ -138,8 +140,14 @@ shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlic
 
 ## Cart progress bar (theme app extension block)
 
-Add the "Spin to Win cart progress" app block to the cart page section and to the cart drawer
-section (any section that accepts app blocks). It shows one tier, the spin threshold, with a
+Two ways to place it. Where a section accepts app blocks, add the "Spin to Win cart progress"
+app block to it. Where it does not (GreenTee's Release theme: its quick cart drawer offers no app
+blocks), enable the "Spin to Win cart progress (embed)" app embed under Theme settings > App
+embeds instead. The embed renders a hidden template and the script clones it next to a
+configurable element in the drawer (default `quick-cart-drawer .quick-cart-drawer__header`,
+after it) and on the cart page (default `cart-items .cart__head`, after it), and clones it again
+whenever the theme replaces that part of the DOM. Leave a selector blank to skip that surface,
+for example when the block is used on the cart page. Both variants share the copy settings. It shows one tier, the spin threshold, with a
 bar and one line: how much more is needed, or that the customer has qualified. Nothing else is
 on it; the boots tier has its own widget on a different basis and the two stay separate.
 

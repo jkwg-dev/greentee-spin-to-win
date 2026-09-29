@@ -1,0 +1,143 @@
+{%- comment -%}
+  GreenTee Spin to Win: cart progress bar as an app embed, for themes whose
+  cart drawer (or cart page) does not accept app blocks. Enable it under
+  Theme settings > App embeds. It renders a hidden template; the script clones
+  it into the drawer and the cart page at the selectors below, and again
+  whenever the theme re-renders those containers. Same gates, copy and
+  behaviour as the "Spin to Win cart progress" block.
+{%- endcomment -%}
+
+{%- liquid
+  assign mode = shop.metafields.greentee_spin.campaign_mode | downcase | strip
+  assign cart_currency = cart.currency.iso_code
+-%}
+
+{%- if mode == 'off' or mode == 'test' -%}
+{%- elsif cart_currency != shop.currency or cart.taxes_included -%}
+{%- else -%}
+  <template
+    data-gt-cartbar-template
+    data-drawer-selector="{{ block.settings.drawer_selector | escape }}"
+    data-drawer-position="{{ block.settings.drawer_position }}"
+    data-page-selector="{{ block.settings.page_selector | escape }}"
+    data-page-position="{{ block.settings.page_position }}"
+  >
+    <gt-cart-progress
+      class="gt-cartbar gt-cartbar--embed"
+      hidden
+      data-gt-cartbar
+      data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
+      data-currency="{{ cart_currency }}"
+      data-locale="{{ request.locale.iso_code }}"
+      data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a spin on the wheel.' | escape }}"
+      data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
+    >
+      <p class="gt-cartbar__line" data-line aria-live="polite"></p>
+      <div class="gt-cartbar__bar">
+        <div
+          class="gt-cartbar__track"
+          role="progressbar"
+          aria-label="Progress toward a spin on the wheel"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          data-track
+        >
+          <div class="gt-cartbar__fill" data-fill></div>
+        </div>
+        <span class="gt-cartbar__marker" data-marker aria-hidden="true"></span>
+        <span class="gt-cartbar__tier" data-tier aria-hidden="true"></span>
+      </div>
+    </gt-cart-progress>
+  </template>
+
+  {{ 'cart-progress.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'cart-progress.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Spin to Win cart progress (embed)",
+  "target": "body",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "For themes whose cart drawer does not take app blocks. Injects the Spin to Win progress bar into the drawer and the cart page at the selectors below, and keeps it current as the cart changes. Hidden automatically outside the campaign."
+    },
+    {
+      "type": "header",
+      "content": "Cart drawer"
+    },
+    {
+      "type": "text",
+      "id": "drawer_selector",
+      "label": "Element to attach to",
+      "info": "CSS selector inside the drawer. Leave blank to skip the drawer.",
+      "default": "quick-cart-drawer .quick-cart-drawer__header"
+    },
+    {
+      "type": "select",
+      "id": "drawer_position",
+      "label": "Where",
+      "options": [
+        { "value": "after", "label": "After that element" },
+        { "value": "before", "label": "Before that element" },
+        { "value": "prepend", "label": "Inside, at the top" },
+        { "value": "append", "label": "Inside, at the bottom" }
+      ],
+      "default": "after"
+    },
+    {
+      "type": "header",
+      "content": "Cart page"
+    },
+    {
+      "type": "text",
+      "id": "page_selector",
+      "label": "Element to attach to",
+      "info": "CSS selector on the cart page. Leave blank to skip the page (for example when the block is placed there instead).",
+      "default": "cart-items .cart__head"
+    },
+    {
+      "type": "select",
+      "id": "page_position",
+      "label": "Where",
+      "options": [
+        { "value": "after", "label": "After that element" },
+        { "value": "before", "label": "Before that element" },
+        { "value": "prepend", "label": "Inside, at the top" },
+        { "value": "append", "label": "Inside, at the bottom" }
+      ],
+      "default": "after"
+    },
+    {
+      "type": "header",
+      "content": "Copy"
+    },
+    {
+      "type": "text",
+      "id": "copy_remaining",
+      "label": "Below the threshold",
+      "info": "[amount] is replaced with what is still needed.",
+      "default": "Add [amount] more to unlock a spin on the wheel."
+    },
+    {
+      "type": "text",
+      "id": "copy_reached",
+      "label": "At or above the threshold",
+      "default": "You’ve unlocked a spin on the wheel after checkout."
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "text",
+      "id": "proxy_path",
+      "label": "App proxy path",
+      "info": "Must match the app proxy in shopify.app.toml. Leave as /apps/spin.",
+      "default": "/apps/spin"
+    }
+  ]
+}
+{% endschema %}

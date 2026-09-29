@@ -69,7 +69,10 @@ The cart page and cart drawer show a small bar toward the $300 spin threshold wi
 ("Add $45 more to unlock a spin on the wheel." or "You've unlocked a spin on the wheel after
 checkout."). It uses the same subtotal as the spin itself, so a customer it says has qualified
 will see the wheel on the Thank you page. It shows only while the campaign is live and hides
-itself afterwards; the block can stay in the theme. It is separate from the boots gift tier bar.
+itself afterwards; it can stay in the theme. It is separate from the boots gift tier bar. On our
+theme it is the **app embed** ("Spin to Win cart progress (embed)", Theme settings > App embeds),
+because the quick cart drawer does not take app blocks. If the theme is changed and the bar
+disappears, the two selector settings on the embed are what to update.
 
 ## Questions about expiry after the campaign
 

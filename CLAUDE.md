@@ -191,7 +191,8 @@ Spin page (storefront page + theme app extension block)
   -> POST /apps/spin/gift                { token, selection? }  adds a won gift to the order
   -> renders the actual wheel in HTML and JS
 
-Cart page and cart drawer (same theme app extension, second block)
+Cart page and cart drawer (same theme app extension: a block, plus an app
+embed that injects by selector for drawers that take no app blocks)
   -> GET  /apps/spin/campaign            { open, minSubtotal, currency }  (no token; cached 60s)
   -> a progress bar toward the spin threshold, from cart.total_price (the
      cart after discounts, before shipping and tax: the same basis as the

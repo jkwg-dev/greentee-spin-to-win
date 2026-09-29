@@ -254,6 +254,88 @@ describe("cart progress: keeping up with the cart", () => {
   });
 });
 
+describe("cart progress: empty cart", () => {
+  it("shows nothing for an empty cart", async () => {
+    const el = mount(0);
+    await flush();
+    expect(el.hidden).toBe(true);
+  });
+});
+
+describe("cart progress: app embed", () => {
+  const EMBED = fs.readFileSync(path.join(DIR, "blocks/cart-progress-embed.liquid"), "utf8");
+  // Re-running the script on a fresh "page": skip the once-only guard and the
+  // element registration (already defined for this window), keep the embed setup.
+  const NO_GUARD = SCRIPT.replace(
+    'if (window.customElements.get("gt-cart-progress")) return;',
+    "",
+  ).replace('window.customElements.define("gt-cart-progress", CartProgress);', "");
+  function embedMarkup(
+    drawerSel = "quick-cart-drawer .quick-cart-drawer__header",
+    pageSel = "cart-items .cart__head",
+  ) {
+    const start = EMBED.indexOf("<template");
+    const end = EMBED.indexOf("</template>") + "</template>".length;
+    return EMBED.slice(start, end)
+      .replace(/\{\{ block\.settings\.(\w+) \| default: '([^']*)' \| escape \}\}/g, "$2")
+      .replace("{{ block.settings.drawer_selector | escape }}", drawerSel)
+      .replace("{{ block.settings.drawer_position }}", "after")
+      .replace("{{ block.settings.page_selector | escape }}", pageSel)
+      .replace("{{ block.settings.page_position }}", "after")
+      .replace("{{ cart_currency }}", "CAD")
+      .replace("{{ request.locale.iso_code }}", "en")
+      .replace(/\{\{[\s\S]*?\}\}/g, "");
+  }
+  /** The script sets the embed up once per page load; each test is a fresh page, so re-run it. */
+  function mountEmbed(): void {
+    document.body.innerHTML =
+      `<quick-cart-drawer><div><div class="quick-cart-drawer__header"><h5>Your cart</h5></div><div class="quick-cart-drawer__main">items</div></div></quick-cart-drawer>` +
+      `<cart-items><div class="container"><div class="cart__head">Cart</div><form action="/cart">form</form></div></cart-items>` +
+      embedMarkup();
+    new Function(scriptRan ? NO_GUARD : SCRIPT)();
+    scriptRan = true;
+  }
+
+  it("injects one bar after the drawer header and one after the cart page head, reading /cart.js", async () => {
+    mountEmbed();
+    await flush(40);
+    const bars = [...document.querySelectorAll("gt-cart-progress")];
+    expect(bars).toHaveLength(2);
+    expect(bars[0].previousElementSibling?.className).toBe("quick-cart-drawer__header");
+    expect(bars[1].previousElementSibling?.className).toBe("cart__head");
+    for (const b of bars) {
+      expect(b.querySelector("[data-tier]")?.textContent).toBe("$300");
+      expect(b.hidden).toBe(false);
+      expect(b.querySelector("[data-line]")?.textContent).toBe(
+        "Add $176.55 more to unlock a spin on the wheel.",
+      );
+    }
+  });
+
+  it("re-injects when the theme replaces the drawer's contents, without duplicating", async () => {
+    mountEmbed();
+    await flush(40);
+    const drawer = document.querySelector("quick-cart-drawer")!;
+    drawer.innerHTML = `<div><div class="quick-cart-drawer__header"><h5>Your cart</h5></div><div class="quick-cart-drawer__main">items</div></div>`;
+    await flush(60);
+    const inDrawer = drawer.querySelectorAll("gt-cart-progress");
+    expect(inDrawer).toHaveLength(1);
+    expect(inDrawer[0].previousElementSibling?.className).toBe("quick-cart-drawer__header");
+    // A second, unrelated DOM change must not add another copy.
+    document.body.appendChild(document.createElement("div"));
+    await flush(60);
+    expect(drawer.querySelectorAll("gt-cart-progress")).toHaveLength(1);
+    expect(document.querySelectorAll("gt-cart-progress")).toHaveLength(2);
+  });
+
+  it("ignores a blank or invalid selector", async () => {
+    document.body.innerHTML = `<div class="x"></div>` + embedMarkup("", ">>bad");
+    new Function(NO_GUARD)();
+    await flush(40);
+    expect(document.querySelectorAll("gt-cart-progress")).toHaveLength(0);
+  });
+});
+
 describe("cart progress: block markup", () => {
   it("renders nothing at all in off or test mode, in another currency, or with tax-inclusive prices", () => {
     // The Liquid gates come before the element; the element is inside the else branch only.
