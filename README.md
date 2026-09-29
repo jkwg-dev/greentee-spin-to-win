@@ -142,7 +142,7 @@ shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlic
 
 Two ways to place it. Where a section accepts app blocks, add the "Spin to Win cart progress"
 app block to it. Where it does not (GreenTee's Release theme: its quick cart drawer offers no app
-blocks), enable the "Spin to Win cart progress (embed)" app embed under Theme settings > App
+blocks), enable the "Spin to Win cart (embed)" app embed under Theme settings > App
 embeds instead. The embed renders a hidden template and the script clones it next to a
 configurable element in the drawer (default `quick-cart-drawer .quick-cart-drawer__header`,
 after it) and on the cart page (default `cart-items .cart__head`, after it), and clones it again
