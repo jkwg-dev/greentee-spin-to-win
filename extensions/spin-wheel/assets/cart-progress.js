@@ -311,14 +311,16 @@
       }
     }
 
+    // setTimeout, not requestAnimationFrame: a drawer can change while the
+    // tab is in the background, and animation frames do not run there.
     var scheduled = false;
     function schedule() {
       if (scheduled) return;
       scheduled = true;
-      (window.requestAnimationFrame || setTimeout)(function () {
+      setTimeout(function () {
         scheduled = false;
         inject();
-      });
+      }, 0);
     }
 
     inject();
