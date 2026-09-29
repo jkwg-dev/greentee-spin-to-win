@@ -38,8 +38,10 @@
     data-subtotal="{{ cart.total_price }}"
     data-currency="{{ cart_currency }}"
     data-locale="{{ request.locale.iso_code }}"
-    data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a spin on the wheel.' | escape }}"
-    data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
+    data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a wheel spin' | escape }}"
+    data-copy-reached="{{ block.settings.copy_reached | default: 'Wheel spin unlocked. Take it after checkout.' | escape }}"
+    data-icon="{% if block.settings.show_icon %}true{% endif %}"
+    data-margin="{{ block.settings.margin_block }}"
     {{ block.shopify_attributes }}
   >
       <span class="gt-cartbar__marker" data-marker aria-hidden="true"></span>
@@ -52,25 +54,42 @@
 
 {% schema %}
 {
-  "name": "Spin to Win cart progress",
+  "name": "Spin to Win cart banner",
   "target": "section",
   "settings": [
     {
       "type": "paragraph",
-      "content": "Shows how close the cart is to the Spin to Win threshold. Hidden automatically outside the campaign. Uses the same subtotal as the spin itself: after discounts, before shipping and tax."
+      "content": "One-line banner: how much more unlocks a spin, or that the spin is unlocked. Hidden automatically outside the campaign. Uses the same subtotal as the spin itself: after discounts, before shipping and tax."
     },
     {
       "type": "text",
       "id": "copy_remaining",
       "label": "Below the threshold",
       "info": "[amount] is replaced with what is still needed.",
-      "default": "Add [amount] more to unlock a spin on the wheel."
+      "default": "Add [amount] more to unlock a wheel spin"
     },
     {
       "type": "text",
       "id": "copy_reached",
       "label": "At or above the threshold",
-      "default": "You’ve unlocked a spin on the wheel after checkout."
+      "default": "Wheel spin unlocked. Take it after checkout."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show the wheel icon",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "margin_block",
+      "label": "Space above and below",
+      "info": "Use this to keep it clear of other banners in the drawer.",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12
     },
     {
       "type": "header",

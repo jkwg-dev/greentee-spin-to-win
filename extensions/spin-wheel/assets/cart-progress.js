@@ -23,35 +23,27 @@
   var PREVIEW_PARAM = "spin-embed"; // ?spin-embed=test shows the bar on the live site; ?spin-embed=off ends it
 
   /*
-   * The bar's internals live in a shadow root so theme CSS (a rule hiding
-   * empty divs, a reset on backgrounds, uppercase text) cannot touch them.
-   * Font, colour and size are inherited from the host on purpose, so the
-   * bar reads as part of the theme; everything else is pinned here.
+   * The banner is a single dark pill, one line, in the element's shadow
+   * root so theme CSS cannot touch it. The font is inherited from the host
+   * on purpose so it reads as part of the theme; everything else is pinned.
    */
   var TEMPLATE =
     "<style>" +
-    ":host{display:block;box-sizing:border-box;width:100%;margin:12px 0 8px;font-size:14px;line-height:1.4;" +
-    "color:#111;text-transform:none;letter-spacing:normal;--track:#e6e6e6;--ink:#111;--muted:#737373}" +
+    ":host{display:block;box-sizing:border-box;width:100%;margin:var(--gtsw-margin,12px) 0;" +
+    "font-size:13px;line-height:1.3;text-transform:none;letter-spacing:normal}" +
     ":host([hidden]){display:none}" +
-    ".line{margin:0 0 12px;font-weight:400}.line strong{font-weight:700}" +
-    ".bar{position:relative;padding:4px 8px 22px 0}" +
-    ".track{height:6px;border-radius:999px;background:var(--track);overflow:hidden}" +
-    ".fill{display:block;height:6px;width:0;border-radius:999px;background:var(--ink);transition:width .35s ease}" +
-    ".marker{position:absolute;top:0;right:0;width:14px;height:14px;box-sizing:border-box;border-radius:50%;" +
-    "border:2px solid var(--track);background:#fff}" +
-    ":host(.gt-cartbar--reached) .marker{border-color:var(--ink);background:var(--ink)}" +
-    ".tier{position:absolute;right:0;top:20px;font-size:13px;color:var(--muted);white-space:nowrap}" +
-    ":host(.gt-cartbar--reached) .tier{color:var(--ink)}" +
-    ":host(.gt-cartbar--reached) .line{font-weight:600}" +
-    "@media (prefers-reduced-motion:reduce){.fill{transition:none}}" +
+    ".pill{display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;margin:0;padding:10px 14px;" +
+    "border-radius:999px;background:#111;color:#fff;font-weight:500}" +
+    ".pill svg{flex:0 0 auto;width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}" +
+    ".pill[data-icon=''] svg{display:none}" +
+    ".text{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".text strong{font-weight:700}" +
     "</style>" +
-    '<p class="line" data-line aria-live="polite"></p>' +
-    '<div class="bar">' +
-    '<div class="track" role="progressbar" aria-label="Progress toward a spin on the wheel" ' +
-    'aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-track><div class="fill" data-fill></div></div>' +
-    '<span class="marker" data-marker aria-hidden="true"></span>' +
-    '<span class="tier" data-tier aria-hidden="true"></span>' +
-    "</div>";
+    '<p class="pill" data-pill>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6"/>' +
+    '<path d="M12 3v7.4M21 12h-7.4M12 21v-7.4M3 12h7.4M18.4 5.6l-5.2 5.2M18.4 18.4l-5.2-5.2M5.6 18.4l5.2-5.2M5.6 5.6l5.2 5.2"/></svg>' +
+    '<span class="text" data-line aria-live="polite"></span>' +
+    "</p>";
 
   /** Live-site preview: ?spin-embed=test turns it on for the browser session, ?spin-embed=off turns it off. */
   function livePreview() {
@@ -283,6 +275,7 @@
       this.hidden = true;
       return;
     }
+    var ui = this.ui || this;
     var threshold = Math.round(config.minSubtotal * 100);
     var subtotal = Math.max(0, cart.subtotal);
     // An empty cart gets no nudge; the drawer's own empty state does the talking.
@@ -290,13 +283,14 @@
       this.hidden = true;
       return;
     }
+    var pill = ui.querySelector("[data-pill]");
+    if (pill)
+      pill.setAttribute("data-icon", this.getAttribute("data-icon") === "true" ? "true" : "");
+    var margin = parseInt(this.getAttribute("data-margin"), 10);
+    this.style.setProperty("--gtsw-margin", (isNaN(margin) ? 12 : margin) + "px");
     var reached = subtotal >= threshold;
-    var pct = threshold > 0 ? Math.min(100, Math.round((subtotal / threshold) * 1000) / 10) : 100;
-    var ui = this.ui || this;
-    var line = ui.querySelector("[data-line]");
-    var track = ui.querySelector("[data-track]");
-    var bar = ui.querySelector("[data-fill]");
     var locale = this.getAttribute("data-locale") || "en-CA";
+    var line = ui.querySelector("[data-line]");
     if (line) {
       if (reached) line.textContent = this.getAttribute("data-copy-reached") || "";
       else
@@ -306,10 +300,6 @@
           formatMoney(threshold - subtotal, config.currency, locale),
         );
     }
-    var tier = ui.querySelector("[data-tier]");
-    if (tier) tier.textContent = formatMoney(threshold, config.currency, locale);
-    if (bar) bar.style.width = pct + "%";
-    if (track) track.setAttribute("aria-valuenow", String(Math.round(pct)));
     this.classList.toggle("gt-cartbar--reached", reached);
     this.hidden = false;
   };

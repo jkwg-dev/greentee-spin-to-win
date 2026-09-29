@@ -25,7 +25,7 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
 - `extensions/spin-wheel/` — the app's one theme app extension (Shopify allows a single one per
   app), holding two blocks. `blocks/spin-wheel.liquid` is the wheel as a full-screen overlay
   (`assets/spin-page.js`, `assets/spin-page.css`, and `assets/spin-wheel.js`, vendored
-  `spin-wheel@5.0.2`, MIT, pinned). `blocks/cart-progress.liquid` is the cart progress bar
+  `spin-wheel@5.0.2`, MIT, pinned). `blocks/cart-progress.liquid` is the one-line cart banner
   toward the spin threshold (`assets/cart-progress.js`; its styles live in the element's shadow
   root, out of the theme's reach), and
   `blocks/cart-progress-embed.liquid` is the same bar as an app embed for themes whose cart
@@ -139,9 +139,9 @@ turns with it: COUPON / 30% OFF / APPAREL for discounts, GFJ / GLOVES for gifts.
 wheel and shows Try again, which is safe because the server is idempotent. Reduced motion
 shortens the animation to a 700 ms settle. `?force=N` is forwarded as `forceSlice` for testers.
 
-## Cart progress bar (theme app extension block)
+## Cart banner (theme app extension block)
 
-Two ways to place it. Where a section accepts app blocks, add the "Spin to Win cart progress"
+Two ways to place it. Where a section accepts app blocks, add the "Spin to Win cart banner"
 app block to it. Where it does not (GreenTee's Release theme: its quick cart drawer offers no app
 blocks), enable the "Spin to Win cart (embed)" app embed under Theme settings > App
 embeds instead. The embed renders a hidden template and the script clones it next to a
@@ -150,21 +150,21 @@ the slot under the "Your cart" title; the theme's `quick-cart-drawer` is the qui
 options" panel, not the cart) and on the cart page (default `cart-items .cart__head`, after it),
 and clones it again
 whenever the theme replaces that part of the DOM. Leave a selector blank to skip that surface,
-for example when the block is used on the cart page. Both variants share the copy settings. It shows one tier, the spin threshold, with a
-bar and one line: how much more is needed, or that the customer has qualified. Nothing else is
+for example when the block is used on the cart page. Both variants share the copy settings. It is a single dark pill, one line: how much more unlocks a spin, or that the spin is
+unlocked and taken after checkout. Nothing else is
 on it; the boots tier has its own widget on a different basis and the two stay separate.
 
 The subtotal is the cart's `total_price` (Liquid on render, `/cart.js` after changes): the cart
 after discounts and before shipping and tax, the same basis as the order's
-`currentSubtotalPriceSet` that spin eligibility reads, so the bar and the Thank you page agree.
-The bar is a custom element, so a drawer re-rendered over AJAX sets it up again with the new
+`currentSubtotalPriceSet` that spin eligibility reads, so the banner and the Thank you page agree.
+The banner is a custom element, so a drawer re-rendered over AJAX sets it up again with the new
 value, and the script also watches fetch and XMLHttpRequest calls to the cart endpoints and
 re-reads `/cart.js` after each, so copies the theme did not re-render update too.
 
-In the theme editor (`request.design_mode`) the bar always renders, whatever the campaign state
+In the theme editor (`request.design_mode`) the banner always renders, whatever the campaign state
 or cart, so it can be placed and styled; that flag never reaches the storefront. On the live
-site, opening any page with `?spin-embed=test` shows the bar for the rest of that browser
-session regardless of campaign state (it reveals nothing but the bar's own copy);
+site, opening any page with `?spin-embed=test` shows the banner for the rest of that browser
+session regardless of campaign state (it reveals nothing but the banner's own copy);
 `?spin-embed=off` ends it. On the
 storefront, whether to show at all comes from `GET /apps/spin/campaign`: mode `live` and inside the campaign
 window, using the same environment and shop-metafield config as the spin. Outside that the block

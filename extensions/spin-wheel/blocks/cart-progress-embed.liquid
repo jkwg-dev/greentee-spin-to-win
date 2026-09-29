@@ -45,8 +45,10 @@
       data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
       data-currency="{{ cart_currency }}"
       data-locale="{{ request.locale.iso_code }}"
-      data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a spin on the wheel.' | escape }}"
-      data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
+      data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a wheel spin' | escape }}"
+      data-copy-reached="{{ block.settings.copy_reached | default: 'Wheel spin unlocked. Take it after checkout.' | escape }}"
+    data-icon="{% if block.settings.show_icon %}true{% endif %}"
+    data-margin="{{ block.settings.margin_block }}"
     >
         <span class="gt-cartbar__marker" data-marker aria-hidden="true"></span>
         <span class="gt-cartbar__tier" data-tier aria-hidden="true"></span>
@@ -64,7 +66,7 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "For themes whose cart drawer does not take app blocks. Injects the Spin to Win progress bar into the drawer and the cart page at the selectors below, and keeps it current as the cart changes. Hidden automatically outside the campaign."
+      "content": "For themes whose cart drawer does not take app blocks. Injects the one-line Spin to Win banner into the drawer and the cart page at the selectors below, and keeps it current as the cart changes. Hidden automatically outside the campaign."
     },
     {
       "type": "header",
@@ -121,13 +123,30 @@
       "id": "copy_remaining",
       "label": "Below the threshold",
       "info": "[amount] is replaced with what is still needed.",
-      "default": "Add [amount] more to unlock a spin on the wheel."
+      "default": "Add [amount] more to unlock a wheel spin"
     },
     {
       "type": "text",
       "id": "copy_reached",
       "label": "At or above the threshold",
-      "default": "You’ve unlocked a spin on the wheel after checkout."
+      "default": "Wheel spin unlocked. Take it after checkout."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_icon",
+      "label": "Show the wheel icon",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "margin_block",
+      "label": "Space above and below",
+      "info": "Use this to keep it clear of other banners in the drawer.",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12
     },
     {
       "type": "header",

@@ -92,7 +92,7 @@ link again (or the order status page) so the app re-reads it.
 - [ ] Place one real order over $300 and watch the logs for that order ID.
 
 - [ ] Theme editor, Theme settings > App embeds: turn on "Spin to Win cart (embed)".
-      The quick cart drawer takes no app blocks, so the embed injects the bar into the drawer and
+      The quick cart drawer takes no app blocks, so the embed injects the banner into the drawer and
       the cart page. It stays hidden until the campaign is live.
 
 ## 6. Close, November 2 after 9:00 AM Pacific

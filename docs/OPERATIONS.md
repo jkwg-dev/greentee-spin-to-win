@@ -63,19 +63,19 @@ Test discounts are titled `2026 Oct Spin Wheel of Fortune Promotion TEST - <rewa
 codes start with `TEST-`. Search `Promotion TEST` to see only those. They are deleted before
 launch and must not be honoured after October 1.
 
-## The cart progress bar
+## The cart banner
 
-The cart page and cart drawer show a small bar toward the $300 spin threshold with one line
-("Add $45 more to unlock a spin on the wheel." or "You've unlocked a spin on the wheel after
-checkout."). It uses the same subtotal as the spin itself, so a customer it says has qualified
+The cart page and cart drawer show a one-line dark banner ("Add $45 more to unlock a wheel spin" or "Wheel spin
+unlocked. Take it after checkout."). It uses the same subtotal as the spin itself, so a customer it says has qualified
 will see the wheel on the Thank you page. It shows only while the campaign is live and hides
 itself afterwards; it can stay in the theme. In the theme editor it is always visible so it can
 be positioned. To check it on the live site before the campaign opens, add `?spin-embed=test` to
-any page URL; the bar then shows for that browser session only (`?spin-embed=off` stops it).
+any page URL; the banner then shows for that browser session only (`?spin-embed=off` stops it).
 Customers never see it outside the campaign. It is separate from the boots gift tier bar. On our
 theme it is the **app embed** ("Spin to Win cart (embed)", Theme settings > App embeds),
-because the quick cart drawer does not take app blocks. If the theme is changed and the bar
-disappears, the two selector settings on the embed are what to update.
+because the quick cart drawer does not take app blocks. If the theme is changed and the banner
+disappears, the two selector settings on the embed are what to update. The embed also has a
+"Space above and below" setting to keep it clear of the free-gift banner another app renders.
 
 ## Questions about expiry after the campaign
 

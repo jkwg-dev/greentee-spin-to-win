@@ -194,7 +194,7 @@ Spin page (storefront page + theme app extension block)
 Cart page and cart drawer (same theme app extension: a block, plus an app
 embed that injects by selector for drawers that take no app blocks)
   -> GET  /apps/spin/campaign            { open, minSubtotal, currency }  (no token; cached 60s)
-  -> a progress bar toward the spin threshold, from cart.total_price (the
+  -> a one-line banner toward the spin threshold, from cart.total_price (the
      cart after discounts, before shipping and tax: the same basis as the
      order's currentSubtotalPriceSet). Renders nothing unless mode is live
      and the campaign window is open. One tier only; the boots tier widget

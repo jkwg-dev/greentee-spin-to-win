@@ -20,6 +20,7 @@ function blockMarkup(subtotal: number, currency = "CAD"): string {
     .replace("{{ cart.total_price }}", String(subtotal))
     .replace("{{ cart_currency }}", currency)
     .replace("{{ request.locale.iso_code }}", "en")
+    .replace(/\{%-?[\s\S]*?-?%\}/g, "")
     .replace(/\{\{[\s\S]*?\}\}/g, "");
 }
 
@@ -108,40 +109,39 @@ afterEach(() => {
 });
 
 describe("cart progress: what it shows", () => {
-  it("stays hidden until the campaign answers open, then shows the shortfall and the bar", async () => {
+  it("stays hidden until the campaign answers open, then shows the shortfall", async () => {
     const el = mount(12345);
     expect(el.hidden).toBe(true);
     await flush();
     expect(el.hidden).toBe(false);
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "Add $176.55 more to unlock a spin on the wheel.",
+      "Add $176.55 more to unlock a wheel spin",
     );
-    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("41.2%");
-    expect(ui(el).querySelector("[data-track]")?.getAttribute("aria-valuenow")).toBe("41");
     expect(el.classList.contains("gt-cartbar--reached")).toBe(false);
-    // The amount is bold, the tier marker shows the threshold.
+    // The amount is bold; the pill is one line.
     expect(ui(el).querySelector("[data-line] strong")?.textContent).toBe("$176.55");
-    expect(ui(el).querySelector("[data-tier]")?.textContent).toBe("$300");
+    expect(ui(el).querySelector("[data-pill]")?.getAttribute("data-icon")).toBe("true");
+    expect(ui(el).querySelector("[data-pill] svg")).not.toBeNull();
+    expect(el.style.getPropertyValue("--gtsw-margin")).toBe("12px");
   });
 
-  it("says qualified at exactly the threshold and caps the bar at 100%", async () => {
+  it("says the spin is unlocked at exactly the threshold and above", async () => {
     const el = mount(30000);
     await flush();
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "You’ve unlocked a spin on the wheel after checkout.",
+      "Wheel spin unlocked. Take it after checkout.",
     );
-    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
     expect(el.classList.contains("gt-cartbar--reached")).toBe(true);
     const over = mount(45000);
     await flush();
-    expect((ui(over).querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
+    expect(over.classList.contains("gt-cartbar--reached")).toBe(true);
   });
 
   it("formats a whole-dollar shortfall without cents", async () => {
     const el = mount(25000);
     await flush();
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "Add $50 more to unlock a spin on the wheel.",
+      "Add $50 more to unlock a wheel spin",
     );
   });
 
@@ -150,7 +150,6 @@ describe("cart progress: what it shows", () => {
     const el = mount(20000);
     await flush();
     expect(ui(el).querySelector("[data-line]")?.textContent).toContain("$50 more");
-    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("80%");
   });
 });
 
@@ -204,14 +203,13 @@ describe("cart progress: keeping up with the cart", () => {
     await flush();
     expect(fake.cartCalls).toBe(1);
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "You’ve unlocked a spin on the wheel after checkout.",
+      "Wheel spin unlocked. Take it after checkout.",
     );
     await fetch("/cart/change.js", { method: "POST", body: JSON.stringify({ total: 9900 }) });
     await flush();
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "Add $201 more to unlock a spin on the wheel.",
+      "Add $201 more to unlock a wheel spin",
     );
-    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("33%");
   });
 
   it("also notices cart changes made through XMLHttpRequest", async () => {
@@ -235,7 +233,7 @@ describe("cart progress: keeping up with the cart", () => {
     await flush();
     expect(again.hidden).toBe(false);
     expect(ui(again).querySelector("[data-line]")?.textContent).toBe(
-      "Add $10 more to unlock a spin on the wheel.",
+      "Add $10 more to unlock a wheel spin",
     );
     expect(fake.campaignCalls).toBe(1); // cached answer, no second round trip
   });
@@ -253,8 +251,8 @@ describe("cart progress: keeping up with the cart", () => {
       (b) => ui(b).querySelector("[data-line]")?.textContent,
     );
     expect(lines).toEqual([
-      "You’ve unlocked a spin on the wheel after checkout.",
-      "You’ve unlocked a spin on the wheel after checkout.",
+      "Wheel spin unlocked. Take it after checkout.",
+      "Wheel spin unlocked. Take it after checkout.",
     ]);
   });
 });
@@ -276,9 +274,8 @@ describe("cart progress: theme editor preview", () => {
     expect(el.hidden).toBe(false);
     // The server's threshold is used when it answers, campaign open or not.
     expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
-      "Add $250 more to unlock a spin on the wheel.",
+      "Add $250 more to unlock a wheel spin",
     );
-    expect(ui(el).querySelector("[data-tier]")?.textContent).toBe("$250");
   });
 
   it("still shows in design mode when the campaign endpoint is unreachable", async () => {
@@ -349,6 +346,7 @@ describe("cart progress: app embed", () => {
       .replace("{{ block.settings.page_place }}", "after")
       .replace("{{ cart_currency }}", "CAD")
       .replace("{{ request.locale.iso_code }}", "en")
+      .replace(/\{%-?[\s\S]*?-?%\}/g, "")
       .replace(/\{\{[\s\S]*?\}\}/g, "");
   }
   /** The script sets the embed up once per page load; each test is a fresh page, so re-run it. */
@@ -369,10 +367,9 @@ describe("cart progress: app embed", () => {
     expect(bars[0].parentElement?.className).toBe("cart-drawer__top");
     expect(bars[1].previousElementSibling?.className).toBe("cart__head");
     for (const b of bars) {
-      expect(ui(b).querySelector("[data-tier]")?.textContent).toBe("$300");
       expect(b.hidden).toBe(false);
       expect(ui(b).querySelector("[data-line]")?.textContent).toBe(
-        "Add $176.55 more to unlock a spin on the wheel.",
+        "Add $176.55 more to unlock a wheel spin",
       );
     }
   });
@@ -420,7 +417,10 @@ describe("cart progress: block markup", () => {
 
   it("never promises a reward, only a spin", () => {
     const copy = [...LIQUID.matchAll(/"default": "([^"]+)"/g)].map((m) => m[1]).join(" ");
-    expect(copy.toLowerCase()).not.toMatch(/win a|free gift|discount code|prize|guarantee/);
-    expect(copy).toContain("a spin on the wheel");
+    expect(copy.toLowerCase()).not.toMatch(/win a|free gift|discount code|prize|guarantee|reward/);
+    expect(copy).toContain("wheel spin");
+    // Short enough for one line in a narrow drawer.
+    for (const line of [...LIQUID.matchAll(/"default": "(Add|Wheel)[^"]*"/g)].map((m) => m[0]))
+      expect(line.length).toBeLessThan(60);
   });
 });
