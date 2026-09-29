@@ -207,22 +207,34 @@
     if (i !== -1) instances.splice(i, 1);
   };
 
+  /** Theme editor preview: shown regardless of campaign state, threshold from the server if it answered. */
+  var PREVIEW_THRESHOLD = 300;
+
   CartProgress.prototype.render = function () {
+    var preview = this.getAttribute("data-preview") === "true";
     var config = currentConfig();
+    if (preview) {
+      config = {
+        open: true,
+        minSubtotal: config ? config.minSubtotal : PREVIEW_THRESHOLD,
+        currency: config ? config.currency : "CAD",
+      };
+      if (!cart) cart = { subtotal: 0, currency: config.currency };
+    }
     if (!config || !config.open || !cart) {
       this.hidden = true;
       return;
     }
     // Compare in the threshold's currency only; the block already renders
     // nothing when the cart is presented in another currency.
-    if (cart.currency && cart.currency !== config.currency) {
+    if (!preview && cart.currency && cart.currency !== config.currency) {
       this.hidden = true;
       return;
     }
     var threshold = Math.round(config.minSubtotal * 100);
     var subtotal = Math.max(0, cart.subtotal);
     // An empty cart gets no nudge; the drawer's own empty state does the talking.
-    if (subtotal <= 0) {
+    if (subtotal <= 0 && !preview) {
       this.hidden = true;
       return;
     }

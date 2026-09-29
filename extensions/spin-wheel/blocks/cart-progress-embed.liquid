@@ -10,11 +10,26 @@
 {%- liquid
   assign mode = shop.metafields.greentee_spin.campaign_mode | downcase | strip
   assign cart_currency = cart.currency.iso_code
+  comment
+    In the theme editor (design mode) the bar always renders, so it can be
+    placed and styled whatever the campaign state. On the storefront it needs
+    a live campaign, the shop currency and tax-exclusive prices.
+  endcomment
+  assign preview_flag = ''
+  assign show = false
+  if request.design_mode
+    assign preview_flag = 'true'
+    assign show = true
+  elsif mode == 'off' or mode == 'test'
+    assign show = false
+  elsif cart_currency != shop.currency or cart.taxes_included
+    assign show = false
+  else
+    assign show = true
+  endif
 -%}
 
-{%- if mode == 'off' or mode == 'test' -%}
-{%- elsif cart_currency != shop.currency or cart.taxes_included -%}
-{%- else -%}
+{%- if show -%}
   <template
     data-gt-cartbar-template
     data-drawer-selector="{{ block.settings.drawer_selector | escape }}"
@@ -26,6 +41,7 @@
       class="gt-cartbar gt-cartbar--embed"
       hidden
       data-gt-cartbar
+      data-preview="{{ preview_flag }}"
       data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
       data-currency="{{ cart_currency }}"
       data-locale="{{ request.locale.iso_code }}"

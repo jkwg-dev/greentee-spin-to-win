@@ -254,6 +254,45 @@ describe("cart progress: keeping up with the cart", () => {
   });
 });
 
+describe("cart progress: theme editor preview", () => {
+  function mountPreview(subtotal: number): HTMLElement {
+    document.body.innerHTML = `<div id="cart">${blockMarkup(subtotal).replace('data-preview=""', 'data-preview="true"')}</div>`;
+    if (!scriptRan) {
+      new Function(SCRIPT)();
+      scriptRan = true;
+    }
+    return document.querySelector("gt-cart-progress") as HTMLElement;
+  }
+
+  it("shows in design mode even when the campaign is closed and the cart is empty", async () => {
+    fake.campaign.body = { ...OPEN, open: false, minSubtotal: 250 };
+    const el = mountPreview(0);
+    await flush();
+    expect(el.hidden).toBe(false);
+    // The server's threshold is used when it answers, campaign open or not.
+    expect(el.querySelector("[data-line]")?.textContent).toBe(
+      "Add $250 more to unlock a spin on the wheel.",
+    );
+    expect(el.querySelector("[data-tier]")?.textContent).toBe("$250");
+  });
+
+  it("still shows in design mode when the campaign endpoint is unreachable", async () => {
+    fake.campaign = { status: 500, body: {} };
+    const el = mountPreview(12345);
+    await flush();
+    expect(el.hidden).toBe(false);
+    expect(el.querySelector("[data-line]")?.textContent).toContain("$176.55");
+  });
+
+  it("is only a preview: the Liquid flag comes from request.design_mode, in both blocks", () => {
+    const EMBED = fs.readFileSync(path.join(DIR, "blocks/cart-progress-embed.liquid"), "utf8");
+    for (const src of [LIQUID, EMBED]) {
+      expect(src).toMatch(/if request\.design_mode\s+assign preview_flag = 'true'/);
+      expect(src).toContain('data-preview="{{ preview_flag }}"');
+    }
+  });
+});
+
 describe("cart progress: empty cart", () => {
   it("shows nothing for an empty cart", async () => {
     const el = mount(0);
@@ -338,12 +377,14 @@ describe("cart progress: app embed", () => {
 
 describe("cart progress: block markup", () => {
   it("renders nothing at all in off or test mode, in another currency, or with tax-inclusive prices", () => {
-    // The Liquid gates come before the element; the element is inside the else branch only.
-    const elseBranch = LIQUID.indexOf("{%- else -%}");
-    expect(elseBranch).toBeGreaterThan(-1);
-    expect(LIQUID.indexOf("<gt-cart-progress")).toBeGreaterThan(elseBranch);
-    expect(LIQUID).toMatch(/mode == 'off' or mode == 'test'/);
-    expect(LIQUID).toMatch(/cart_currency != shop\.currency or cart\.taxes_included/);
+    // The Liquid gates decide `show` before the element; the element renders only when it is true.
+    const gate = LIQUID.indexOf("{%- if show -%}");
+    expect(gate).toBeGreaterThan(-1);
+    expect(LIQUID.indexOf("<gt-cart-progress")).toBeGreaterThan(gate);
+    expect(LIQUID).toMatch(/elsif mode == 'off' or mode == 'test'\s+assign show = false/);
+    expect(LIQUID).toMatch(
+      /elsif cart_currency != shop\.currency or cart\.taxes_included\s+assign show = false/,
+    );
   });
 
   it("reads the cart total after discounts, the same basis as spin eligibility", () => {

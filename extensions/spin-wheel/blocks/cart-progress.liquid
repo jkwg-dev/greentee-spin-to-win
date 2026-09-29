@@ -9,21 +9,31 @@
 {%- liquid
   assign mode = shop.metafields.greentee_spin.campaign_mode | downcase | strip
   assign cart_currency = cart.currency.iso_code
+  comment
+    In the theme editor (design mode) the bar always renders, so it can be
+    placed and styled whatever the campaign state. On the storefront it needs
+    a live campaign, the shop currency and tax-exclusive prices.
+  endcomment
+  assign preview_flag = ''
+  assign show = false
+  if request.design_mode
+    assign preview_flag = 'true'
+    assign show = true
+  elsif mode == 'off' or mode == 'test'
+    assign show = false
+  elsif cart_currency != shop.currency or cart.taxes_included
+    assign show = false
+  else
+    assign show = true
+  endif
 -%}
 
-{%- if mode == 'off' or mode == 'test' -%}
-  {%- comment -%} Not live: nothing, without even loading the script. {%- endcomment -%}
-{%- elsif cart_currency != shop.currency or cart.taxes_included -%}
-  {%- comment -%}
-    The threshold is in the shop currency and before tax. A cart shown in another
-    currency, or with tax folded into prices, cannot be compared honestly, so
-    show nothing rather than a bar that might lie.
-  {%- endcomment -%}
-{%- else -%}
+{%- if show -%}
   <gt-cart-progress
     class="gt-cartbar"
     hidden
     data-gt-cartbar
+    data-preview="{{ preview_flag }}"
     data-proxy-path="{{ block.settings.proxy_path | default: '/apps/spin' | escape }}"
     data-subtotal="{{ cart.total_price }}"
     data-currency="{{ cart_currency }}"

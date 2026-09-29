@@ -158,7 +158,9 @@ The bar is a custom element, so a drawer re-rendered over AJAX sets it up again 
 value, and the script also watches fetch and XMLHttpRequest calls to the cart endpoints and
 re-reads `/cart.js` after each, so copies the theme did not re-render update too.
 
-Whether to show at all comes from `GET /apps/spin/campaign`: mode `live` and inside the campaign
+In the theme editor (`request.design_mode`) the bar always renders, whatever the campaign state
+or cart, so it can be placed and styled; that flag never reaches the storefront. On the
+storefront, whether to show at all comes from `GET /apps/spin/campaign`: mode `live` and inside the campaign
 window, using the same environment and shop-metafield config as the spin. Outside that the block
 renders nothing, so it can stay in the theme after the campaign. Liquid also renders nothing when
 the shop metafield says `off` or `test`, when the cart is presented in a currency other than the
