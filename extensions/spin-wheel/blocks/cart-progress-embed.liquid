@@ -32,10 +32,10 @@
 {%- if show -%}
   <template
     data-gt-cartbar-template
-    data-drawer-selector="{{ block.settings.drawer_selector | escape }}"
-    data-drawer-position="{{ block.settings.drawer_position }}"
-    data-page-selector="{{ block.settings.page_selector | escape }}"
-    data-page-position="{{ block.settings.page_position }}"
+    data-drawer-selector="{{ block.settings.drawer_target | escape }}"
+    data-drawer-position="{{ block.settings.drawer_place }}"
+    data-page-selector="{{ block.settings.page_target | escape }}"
+    data-page-position="{{ block.settings.page_place }}"
   >
     <gt-cart-progress
       class="gt-cartbar gt-cartbar--embed"
@@ -86,14 +86,14 @@
     },
     {
       "type": "text",
-      "id": "drawer_selector",
+      "id": "drawer_target",
       "label": "Element to attach to",
-      "info": "CSS selector inside the drawer. Leave blank to skip the drawer.",
-      "default": "quick-cart-drawer .quick-cart-drawer__header"
+      "info": "CSS selector inside the cart drawer (the \"Your cart\" panel, not the quick-add drawer). Leave blank to skip the drawer.",
+      "default": "cart-drawer .cart-drawer__top"
     },
     {
       "type": "select",
-      "id": "drawer_position",
+      "id": "drawer_place",
       "label": "Where",
       "options": [
         { "value": "after", "label": "After that element" },
@@ -101,7 +101,7 @@
         { "value": "prepend", "label": "Inside, at the top" },
         { "value": "append", "label": "Inside, at the bottom" }
       ],
-      "default": "after"
+      "default": "append"
     },
     {
       "type": "header",
@@ -109,14 +109,14 @@
     },
     {
       "type": "text",
-      "id": "page_selector",
+      "id": "page_target",
       "label": "Element to attach to",
       "info": "CSS selector on the cart page. Leave blank to skip the page (for example when the block is placed there instead).",
       "default": "cart-items .cart__head"
     },
     {
       "type": "select",
-      "id": "page_position",
+      "id": "page_place",
       "label": "Where",
       "options": [
         { "value": "after", "label": "After that element" },

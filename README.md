@@ -144,8 +144,10 @@ Two ways to place it. Where a section accepts app blocks, add the "Spin to Win c
 app block to it. Where it does not (GreenTee's Release theme: its quick cart drawer offers no app
 blocks), enable the "Spin to Win cart (embed)" app embed under Theme settings > App
 embeds instead. The embed renders a hidden template and the script clones it next to a
-configurable element in the drawer (default `quick-cart-drawer .quick-cart-drawer__header`,
-after it) and on the cart page (default `cart-items .cart__head`, after it), and clones it again
+configurable element in the cart drawer (default: appended inside `cart-drawer .cart-drawer__top`,
+the slot under the "Your cart" title; the theme's `quick-cart-drawer` is the quick-add "Choose
+options" panel, not the cart) and on the cart page (default `cart-items .cart__head`, after it),
+and clones it again
 whenever the theme replaces that part of the DOM. Leave a selector blank to skip that surface,
 for example when the block is used on the cart page. Both variants share the copy settings. It shows one tier, the spin threshold, with a
 bar and one line: how much more is needed, or that the customer has qualified. Nothing else is

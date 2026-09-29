@@ -310,17 +310,17 @@ describe("cart progress: app embed", () => {
     "",
   ).replace('window.customElements.define("gt-cart-progress", CartProgress);', "");
   function embedMarkup(
-    drawerSel = "quick-cart-drawer .quick-cart-drawer__header",
+    drawerSel = "cart-drawer .cart-drawer__top",
     pageSel = "cart-items .cart__head",
   ) {
     const start = EMBED.indexOf("<template");
     const end = EMBED.indexOf("</template>") + "</template>".length;
     return EMBED.slice(start, end)
       .replace(/\{\{ block\.settings\.(\w+) \| default: '([^']*)' \| escape \}\}/g, "$2")
-      .replace("{{ block.settings.drawer_selector | escape }}", drawerSel)
-      .replace("{{ block.settings.drawer_position }}", "after")
-      .replace("{{ block.settings.page_selector | escape }}", pageSel)
-      .replace("{{ block.settings.page_position }}", "after")
+      .replace("{{ block.settings.drawer_target | escape }}", drawerSel)
+      .replace("{{ block.settings.drawer_place }}", "append")
+      .replace("{{ block.settings.page_target | escape }}", pageSel)
+      .replace("{{ block.settings.page_place }}", "after")
       .replace("{{ cart_currency }}", "CAD")
       .replace("{{ request.locale.iso_code }}", "en")
       .replace(/\{\{[\s\S]*?\}\}/g, "");
@@ -328,19 +328,19 @@ describe("cart progress: app embed", () => {
   /** The script sets the embed up once per page load; each test is a fresh page, so re-run it. */
   function mountEmbed(): void {
     document.body.innerHTML =
-      `<quick-cart-drawer><div><div class="quick-cart-drawer__header"><h5>Your cart</h5></div><div class="quick-cart-drawer__main">items</div></div></quick-cart-drawer>` +
+      `<cart-drawer><div class="cart-drawer__inner"><div class="cart-drawer__head"><p>Your cart</p></div><div class="cart-drawer__top"></div><div class="cart-drawer__body">items</div></div></cart-drawer>` +
       `<cart-items><div class="container"><div class="cart__head">Cart</div><form action="/cart">form</form></div></cart-items>` +
       embedMarkup();
     new Function(scriptRan ? NO_GUARD : SCRIPT)();
     scriptRan = true;
   }
 
-  it("injects one bar after the drawer header and one after the cart page head, reading /cart.js", async () => {
+  it("injects one bar inside the drawer's top slot and one after the cart page head, reading /cart.js", async () => {
     mountEmbed();
     await flush(40);
     const bars = [...document.querySelectorAll("gt-cart-progress")];
     expect(bars).toHaveLength(2);
-    expect(bars[0].previousElementSibling?.className).toBe("quick-cart-drawer__header");
+    expect(bars[0].parentElement?.className).toBe("cart-drawer__top");
     expect(bars[1].previousElementSibling?.className).toBe("cart__head");
     for (const b of bars) {
       expect(b.querySelector("[data-tier]")?.textContent).toBe("$300");
@@ -354,12 +354,12 @@ describe("cart progress: app embed", () => {
   it("re-injects when the theme replaces the drawer's contents, without duplicating", async () => {
     mountEmbed();
     await flush(40);
-    const drawer = document.querySelector("quick-cart-drawer")!;
-    drawer.innerHTML = `<div><div class="quick-cart-drawer__header"><h5>Your cart</h5></div><div class="quick-cart-drawer__main">items</div></div>`;
+    const drawer = document.querySelector("cart-drawer")!;
+    drawer.innerHTML = `<div class="cart-drawer__inner"><div class="cart-drawer__head"><p>Your cart</p></div><div class="cart-drawer__top"></div><div class="cart-drawer__body">items</div></div>`;
     await flush(60);
     const inDrawer = drawer.querySelectorAll("gt-cart-progress");
     expect(inDrawer).toHaveLength(1);
-    expect(inDrawer[0].previousElementSibling?.className).toBe("quick-cart-drawer__header");
+    expect(inDrawer[0].parentElement?.className).toBe("cart-drawer__top");
     // A second, unrelated DOM change must not add another copy.
     document.body.appendChild(document.createElement("div"));
     await flush(60);
