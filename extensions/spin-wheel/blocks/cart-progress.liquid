@@ -28,7 +28,7 @@
     data-subtotal="{{ cart.total_price }}"
     data-currency="{{ cart_currency }}"
     data-locale="{{ request.locale.iso_code }}"
-    data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add {amount} more to unlock a spin on the wheel.' | escape }}"
+    data-copy-remaining="{{ block.settings.copy_remaining | default: 'Add [amount] more to unlock a spin on the wheel.' | escape }}"
     data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
     {{ block.shopify_attributes }}
   >
@@ -67,8 +67,8 @@
       "type": "text",
       "id": "copy_remaining",
       "label": "Below the threshold",
-      "info": "{amount} is replaced with what is still needed.",
-      "default": "Add {amount} more to unlock a spin on the wheel."
+      "info": "[amount] is replaced with what is still needed.",
+      "default": "Add [amount] more to unlock a spin on the wheel."
     },
     {
       "type": "text",

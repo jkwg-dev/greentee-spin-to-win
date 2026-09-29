@@ -106,16 +106,16 @@
     }
   }
 
-  /** Fills `{amount}` in a copy template, as a bold run, into `node`. */
+  /** Fills `[amount]` in a copy template, as a bold run, into `node`. */
   function fillLine(node, template, amount) {
     while (node.firstChild) node.removeChild(node.firstChild);
-    var parts = String(template || "").split("{amount}");
+    var parts = String(template || "").split("[amount]");
     node.appendChild(document.createTextNode(parts[0]));
     if (parts.length > 1) {
       var strong = document.createElement("strong");
       strong.textContent = amount;
       node.appendChild(strong);
-      node.appendChild(document.createTextNode(parts.slice(1).join("{amount}")));
+      node.appendChild(document.createTextNode(parts.slice(1).join("[amount]")));
     }
   }
 
