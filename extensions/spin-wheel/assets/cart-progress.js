@@ -19,6 +19,51 @@
 
   var CONFIG_TTL_MS = 60 * 1000;
   var STORAGE_KEY = "gtsw-cart-progress";
+  var PREVIEW_KEY = "gtsw-cart-progress-preview";
+  var PREVIEW_PARAM = "spin-embed"; // ?spin-embed=test shows the bar on the live site; ?spin-embed=off ends it
+
+  /*
+   * The bar's internals live in a shadow root so theme CSS (a rule hiding
+   * empty divs, a reset on backgrounds, uppercase text) cannot touch them.
+   * Font, colour and size are inherited from the host on purpose, so the
+   * bar reads as part of the theme; everything else is pinned here.
+   */
+  var TEMPLATE =
+    "<style>" +
+    ":host{display:block;box-sizing:border-box;width:100%;margin:12px 0 8px;font-size:14px;line-height:1.4;" +
+    "color:#111;text-transform:none;letter-spacing:normal;--track:#e6e6e6;--ink:#111;--muted:#737373}" +
+    ":host([hidden]){display:none}" +
+    ".line{margin:0 0 12px;font-weight:400}.line strong{font-weight:700}" +
+    ".bar{position:relative;padding:4px 8px 22px 0}" +
+    ".track{height:6px;border-radius:999px;background:var(--track);overflow:hidden}" +
+    ".fill{display:block;height:6px;width:0;border-radius:999px;background:var(--ink);transition:width .35s ease}" +
+    ".marker{position:absolute;top:0;right:0;width:14px;height:14px;box-sizing:border-box;border-radius:50%;" +
+    "border:2px solid var(--track);background:#fff}" +
+    ":host(.gt-cartbar--reached) .marker{border-color:var(--ink);background:var(--ink)}" +
+    ".tier{position:absolute;right:0;top:20px;font-size:13px;color:var(--muted);white-space:nowrap}" +
+    ":host(.gt-cartbar--reached) .tier{color:var(--ink)}" +
+    ":host(.gt-cartbar--reached) .line{font-weight:600}" +
+    "@media (prefers-reduced-motion:reduce){.fill{transition:none}}" +
+    "</style>" +
+    '<p class="line" data-line aria-live="polite"></p>' +
+    '<div class="bar">' +
+    '<div class="track" role="progressbar" aria-label="Progress toward a spin on the wheel" ' +
+    'aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-track><div class="fill" data-fill></div></div>' +
+    '<span class="marker" data-marker aria-hidden="true"></span>' +
+    '<span class="tier" data-tier aria-hidden="true"></span>' +
+    "</div>";
+
+  /** Live-site preview: ?spin-embed=test turns it on for the browser session, ?spin-embed=off turns it off. */
+  function livePreview() {
+    try {
+      var v = new URLSearchParams(window.location.search).get(PREVIEW_PARAM);
+      if (v === "test") window.sessionStorage.setItem(PREVIEW_KEY, "1");
+      else if (v === "off") window.sessionStorage.removeItem(PREVIEW_KEY);
+      return window.sessionStorage.getItem(PREVIEW_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
   var CART_ENDPOINT = /\/cart\/(add|change|update|clear|remove)(\.js|\.json)?(\?|$)/;
 
   var instances = [];
@@ -183,6 +228,13 @@
   CartProgress.prototype.connectedCallback = function () {
     var self = this;
     if (instances.indexOf(self) === -1) instances.push(self);
+    if (!self.shadowRoot) {
+      // Anything the theme rendered inside is discarded; the shadow root is the UI.
+      while (self.firstChild) self.removeChild(self.firstChild);
+      var root = self.attachShadow ? self.attachShadow({ mode: "open" }) : self;
+      root.innerHTML = TEMPLATE;
+      self.ui = root;
+    }
     self.proxyPath = (self.getAttribute("data-proxy-path") || "/apps/spin").replace(/\/+$/, "");
     // The value the theme rendered is right for this render; a drawer
     // re-rendered over AJAX carries the new cart in this attribute too.
@@ -211,7 +263,7 @@
   var PREVIEW_THRESHOLD = 300;
 
   CartProgress.prototype.render = function () {
-    var preview = this.getAttribute("data-preview") === "true";
+    var preview = this.getAttribute("data-preview") === "true" || livePreview();
     var config = currentConfig();
     if (preview) {
       config = {
@@ -240,9 +292,10 @@
     }
     var reached = subtotal >= threshold;
     var pct = threshold > 0 ? Math.min(100, Math.round((subtotal / threshold) * 1000) / 10) : 100;
-    var line = this.querySelector("[data-line]");
-    var track = this.querySelector("[data-track]");
-    var bar = this.querySelector("[data-fill]");
+    var ui = this.ui || this;
+    var line = ui.querySelector("[data-line]");
+    var track = ui.querySelector("[data-track]");
+    var bar = ui.querySelector("[data-fill]");
     var locale = this.getAttribute("data-locale") || "en-CA";
     if (line) {
       if (reached) line.textContent = this.getAttribute("data-copy-reached") || "";
@@ -253,7 +306,7 @@
           formatMoney(threshold - subtotal, config.currency, locale),
         );
     }
-    var tier = this.querySelector("[data-tier]");
+    var tier = ui.querySelector("[data-tier]");
     if (tier) tier.textContent = formatMoney(threshold, config.currency, locale);
     if (bar) bar.style.width = pct + "%";
     if (track) track.setAttribute("aria-valuenow", String(Math.round(pct)));

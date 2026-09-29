@@ -26,7 +26,8 @@ Read `CLAUDE.md` first: it holds the business rules, hard constraints and data m
   app), holding two blocks. `blocks/spin-wheel.liquid` is the wheel as a full-screen overlay
   (`assets/spin-page.js`, `assets/spin-page.css`, and `assets/spin-wheel.js`, vendored
   `spin-wheel@5.0.2`, MIT, pinned). `blocks/cart-progress.liquid` is the cart progress bar
-  toward the spin threshold (`assets/cart-progress.js`, `assets/cart-progress.css`), and
+  toward the spin threshold (`assets/cart-progress.js`; its styles live in the element's shadow
+  root, out of the theme's reach), and
   `blocks/cart-progress-embed.liquid` is the same bar as an app embed for themes whose cart
   drawer takes no app blocks.
 - `app/routes/apps.spin.campaign.tsx` — `GET /apps/spin/campaign`, the public, cached answer the
@@ -161,7 +162,10 @@ value, and the script also watches fetch and XMLHttpRequest calls to the cart en
 re-reads `/cart.js` after each, so copies the theme did not re-render update too.
 
 In the theme editor (`request.design_mode`) the bar always renders, whatever the campaign state
-or cart, so it can be placed and styled; that flag never reaches the storefront. On the
+or cart, so it can be placed and styled; that flag never reaches the storefront. On the live
+site, opening any page with `?spin-embed=test` shows the bar for the rest of that browser
+session regardless of campaign state (it reveals nothing but the bar's own copy);
+`?spin-embed=off` ends it. On the
 storefront, whether to show at all comes from `GET /apps/spin/campaign`: mode `live` and inside the campaign
 window, using the same environment and shop-metafield config as the spin. Outside that the block
 renders nothing, so it can stay in the theme after the campaign. Liquid also renders nothing when

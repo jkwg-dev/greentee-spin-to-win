@@ -42,25 +42,11 @@
     data-copy-reached="{{ block.settings.copy_reached | default: 'You’ve unlocked a spin on the wheel after checkout.' | escape }}"
     {{ block.shopify_attributes }}
   >
-    <p class="gt-cartbar__line" data-line aria-live="polite"></p>
-    <div class="gt-cartbar__bar">
-      <div
-        class="gt-cartbar__track"
-        role="progressbar"
-        aria-label="Progress toward a spin on the wheel"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0"
-        data-track
-      >
-        <div class="gt-cartbar__fill" data-fill></div>
-      </div>
       <span class="gt-cartbar__marker" data-marker aria-hidden="true"></span>
       <span class="gt-cartbar__tier" data-tier aria-hidden="true"></span>
     </div>
   </gt-cart-progress>
 
-  {{ 'cart-progress.css' | asset_url | stylesheet_tag }}
   <script src="{{ 'cart-progress.js' | asset_url }}" defer></script>
 {%- endif -%}
 

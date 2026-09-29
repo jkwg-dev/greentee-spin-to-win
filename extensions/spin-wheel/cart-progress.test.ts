@@ -67,6 +67,11 @@ function installFetch() {
   );
 }
 
+/** The bar's UI lives in its shadow root. */
+function ui(el: Element): ParentNode {
+  return el.shadowRoot ?? el;
+}
+
 async function flush(ms = 20): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
@@ -108,34 +113,34 @@ describe("cart progress: what it shows", () => {
     expect(el.hidden).toBe(true);
     await flush();
     expect(el.hidden).toBe(false);
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "Add $176.55 more to unlock a spin on the wheel.",
     );
-    expect((el.querySelector("[data-fill]") as HTMLElement).style.width).toBe("41.2%");
-    expect(el.querySelector("[data-track]")?.getAttribute("aria-valuenow")).toBe("41");
+    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("41.2%");
+    expect(ui(el).querySelector("[data-track]")?.getAttribute("aria-valuenow")).toBe("41");
     expect(el.classList.contains("gt-cartbar--reached")).toBe(false);
     // The amount is bold, the tier marker shows the threshold.
-    expect(el.querySelector("[data-line] strong")?.textContent).toBe("$176.55");
-    expect(el.querySelector("[data-tier]")?.textContent).toBe("$300");
+    expect(ui(el).querySelector("[data-line] strong")?.textContent).toBe("$176.55");
+    expect(ui(el).querySelector("[data-tier]")?.textContent).toBe("$300");
   });
 
   it("says qualified at exactly the threshold and caps the bar at 100%", async () => {
     const el = mount(30000);
     await flush();
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "You’ve unlocked a spin on the wheel after checkout.",
     );
-    expect((el.querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
+    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
     expect(el.classList.contains("gt-cartbar--reached")).toBe(true);
     const over = mount(45000);
     await flush();
-    expect((over.querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
+    expect((ui(over).querySelector("[data-fill]") as HTMLElement).style.width).toBe("100%");
   });
 
   it("formats a whole-dollar shortfall without cents", async () => {
     const el = mount(25000);
     await flush();
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "Add $50 more to unlock a spin on the wheel.",
     );
   });
@@ -144,8 +149,8 @@ describe("cart progress: what it shows", () => {
     fake.campaign.body = { ...OPEN, minSubtotal: 250 };
     const el = mount(20000);
     await flush();
-    expect(el.querySelector("[data-line]")?.textContent).toContain("$50 more");
-    expect((el.querySelector("[data-fill]") as HTMLElement).style.width).toBe("80%");
+    expect(ui(el).querySelector("[data-line]")?.textContent).toContain("$50 more");
+    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("80%");
   });
 });
 
@@ -155,7 +160,7 @@ describe("cart progress: when it shows", () => {
     const el = mount(40000);
     await flush();
     expect(el.hidden).toBe(true);
-    expect(el.querySelector("[data-line]")?.textContent).toBe("");
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe("");
   });
 
   it("renders nothing when the campaign endpoint fails or is malformed", async () => {
@@ -198,15 +203,15 @@ describe("cart progress: keeping up with the cart", () => {
     await fetch("/cart/change.js", { method: "POST", body: JSON.stringify({ total: 31000 }) });
     await flush();
     expect(fake.cartCalls).toBe(1);
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "You’ve unlocked a spin on the wheel after checkout.",
     );
     await fetch("/cart/change.js", { method: "POST", body: JSON.stringify({ total: 9900 }) });
     await flush();
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "Add $201 more to unlock a spin on the wheel.",
     );
-    expect((el.querySelector("[data-fill]") as HTMLElement).style.width).toBe("33%");
+    expect((ui(el).querySelector("[data-fill]") as HTMLElement).style.width).toBe("33%");
   });
 
   it("also notices cart changes made through XMLHttpRequest", async () => {
@@ -229,7 +234,7 @@ describe("cart progress: keeping up with the cart", () => {
     const again = document.querySelector("gt-cart-progress") as HTMLElement;
     await flush();
     expect(again.hidden).toBe(false);
-    expect(again.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(again).querySelector("[data-line]")?.textContent).toBe(
       "Add $10 more to unlock a spin on the wheel.",
     );
     expect(fake.campaignCalls).toBe(1); // cached answer, no second round trip
@@ -244,8 +249,8 @@ describe("cart progress: keeping up with the cart", () => {
     await flush();
     await fetch("/cart/change.js", { method: "POST", body: JSON.stringify({ total: 30000 }) });
     await flush();
-    const lines = [...document.querySelectorAll("gt-cart-progress [data-line]")].map(
-      (l) => l.textContent,
+    const lines = [...document.querySelectorAll("gt-cart-progress")].map(
+      (b) => ui(b).querySelector("[data-line]")?.textContent,
     );
     expect(lines).toEqual([
       "You’ve unlocked a spin on the wheel after checkout.",
@@ -270,10 +275,10 @@ describe("cart progress: theme editor preview", () => {
     await flush();
     expect(el.hidden).toBe(false);
     // The server's threshold is used when it answers, campaign open or not.
-    expect(el.querySelector("[data-line]")?.textContent).toBe(
+    expect(ui(el).querySelector("[data-line]")?.textContent).toBe(
       "Add $250 more to unlock a spin on the wheel.",
     );
-    expect(el.querySelector("[data-tier]")?.textContent).toBe("$250");
+    expect(ui(el).querySelector("[data-tier]")?.textContent).toBe("$250");
   });
 
   it("still shows in design mode when the campaign endpoint is unreachable", async () => {
@@ -281,7 +286,7 @@ describe("cart progress: theme editor preview", () => {
     const el = mountPreview(12345);
     await flush();
     expect(el.hidden).toBe(false);
-    expect(el.querySelector("[data-line]")?.textContent).toContain("$176.55");
+    expect(ui(el).querySelector("[data-line]")?.textContent).toContain("$176.55");
   });
 
   it("is only a preview: the Liquid flag comes from request.design_mode, in both blocks", () => {
@@ -290,6 +295,27 @@ describe("cart progress: theme editor preview", () => {
       expect(src).toMatch(/if request\.design_mode\s+assign preview_flag = 'true'/);
       expect(src).toContain('data-preview="{{ preview_flag }}"');
     }
+  });
+});
+
+describe("cart progress: live-site preview query", () => {
+  it("?spin-embed=test shows the bar for the session, ?spin-embed=off ends it", async () => {
+    fake.campaign.body = { ...OPEN, open: false };
+    window.history.replaceState(null, "", "/cart?spin-embed=test");
+    let el = mount(12345);
+    await flush();
+    expect(el.hidden).toBe(false);
+    expect(ui(el).querySelector("[data-line]")?.textContent).toContain("$176.55");
+    // Sticks across navigation within the session.
+    window.history.replaceState(null, "", "/collections/all");
+    el = mount(12345);
+    await flush();
+    expect(el.hidden).toBe(false);
+    window.history.replaceState(null, "", "/cart?spin-embed=off");
+    el = mount(12345);
+    await flush();
+    expect(el.hidden).toBe(true);
+    window.history.replaceState(null, "", "/cart");
   });
 });
 
@@ -343,9 +369,9 @@ describe("cart progress: app embed", () => {
     expect(bars[0].parentElement?.className).toBe("cart-drawer__top");
     expect(bars[1].previousElementSibling?.className).toBe("cart__head");
     for (const b of bars) {
-      expect(b.querySelector("[data-tier]")?.textContent).toBe("$300");
+      expect(ui(b).querySelector("[data-tier]")?.textContent).toBe("$300");
       expect(b.hidden).toBe(false);
-      expect(b.querySelector("[data-line]")?.textContent).toBe(
+      expect(ui(b).querySelector("[data-line]")?.textContent).toBe(
         "Add $176.55 more to unlock a spin on the wheel.",
       );
     }
