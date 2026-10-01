@@ -8,13 +8,13 @@
 import {
   CAMPAIGN_DEFAULTS,
   CAMPAIGN_MODES,
-  CAMPAIGN_TIMEZONE,
+  CAMPAIGN_UTC_OFFSET,
   DEFAULT_SPIN_PAGE_PATH,
   type CampaignMode,
   type DiscountCollectionKey,
 } from "~/config/campaign";
 import { normalizeHost } from "~/lib/host";
-import { parseInZone } from "~/lib/time";
+import { parseAtOffset } from "~/lib/time";
 
 export interface AppEnv {
   /** off | test | live. `off` is the kill switch. */
@@ -83,7 +83,7 @@ export function loadEnv(source: EnvSource = process.env): AppEnv {
   const parseDate = (key: string, fallback: string): Date => {
     const raw = str(source, key) ?? fallback;
     try {
-      return parseInZone(raw, CAMPAIGN_TIMEZONE);
+      return parseAtOffset(raw, CAMPAIGN_UTC_OFFSET);
     } catch (e) {
       problems.push(`${key}: ${(e as Error).message}`);
       return new Date(0);

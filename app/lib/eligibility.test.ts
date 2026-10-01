@@ -18,7 +18,7 @@ const BASE_ENV = {
 const env = loadEnv(BASE_ENV);
 const IN_WINDOW = new Date("2026-10-10T18:00:00Z");
 const BEFORE = new Date("2026-09-28T18:00:00Z");
-const AFTER = new Date("2026-11-02T17:00:00Z"); // exactly campaign end
+const AFTER = new Date("2026-11-02T16:00:00Z"); // exactly campaign end
 
 function order(over: Partial<OrderSnapshot> = {}): OrderSnapshot {
   return {

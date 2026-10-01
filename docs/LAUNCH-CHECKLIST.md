@@ -136,3 +136,6 @@ Set these in Settings, Environment Variables for Production (and Preview if you 
 `TEST_EMAILS`, `TEST_BYPASS_MIN_SUBTOTAL`, `COLLECTION_CLUBS`, `COLLECTION_ACCESSORIES`,
 `COLLECTION_APPAREL`, `SPIN_SECRET`, `APP_URL`, `SPIN_PAGE_URL`, `SHOPIFY_API_KEY`,
 `SHOPIFY_API_SECRET`, `SHOP_DOMAIN`, and `SHOP_ALT_DOMAINS` only if the logs ask for it.
+
+Write `CAMPAIGN_START` and `CAMPAIGN_END` with an explicit `-07:00` offset, for example
+`2026-11-02T09:00:00-07:00`. British Columbia is on Pacific Time, UTC-7, all year from 2026.

@@ -59,7 +59,7 @@ describe("parseStatus", () => {
       code: "ABCDEFGH",
       gift: null,
       spunAt: "2026-10-03T18:22:41.000Z",
-      expiresAt: "2026-11-02T17:00:00.000Z",
+      expiresAt: "2026-11-02T16:00:00.000Z",
       expired: false,
       testMode: false,
     };

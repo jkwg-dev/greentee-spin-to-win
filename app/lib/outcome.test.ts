@@ -261,7 +261,7 @@ describe("stale records from an older reward table", () => {
       rewardLabel: "10% Off Eligible Clubs",
       rewardType: "discount",
       code: "ABCDEFGH",
-      expiresAt: "2026-11-02T17:00:00.000Z",
+      expiresAt: "2026-11-02T16:00:00.000Z",
     });
     expect(parseSpinResult(raw)).toMatchObject({ sliceIndex: 10, rewardKey: "clubs_10" });
   });

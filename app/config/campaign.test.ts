@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { offsetMinutes } from "~/lib/time";
 import {
+  CAMPAIGN_UTC_OFFSET,
+  CAMPAIGN_UTC_OFFSET_MINUTES,
+  CAMPAIGN_ZONE_LABEL,
   REWARD_REDIRECTS,
   SHOP_ORIGIN,
   SLICES,
@@ -56,5 +60,13 @@ describe("storefront modal parity", () => {
 
   it("uses the same primary label", () => {
     expect(js).toContain('var SHOP_LABEL = "Shop with discount";');
+  });
+
+  it("uses the same fixed Pacific Time offset and label", () => {
+    expect(CAMPAIGN_UTC_OFFSET_MINUTES).toBe(offsetMinutes(CAMPAIGN_UTC_OFFSET));
+    expect(js).toContain(`var PT_OFFSET_MINUTES = ${CAMPAIGN_UTC_OFFSET_MINUTES};`);
+    expect(js).toContain(`var PT_LABEL = "${CAMPAIGN_ZONE_LABEL}";`);
+    // The browser must never resolve the zone itself: its data may predate 2026a.
+    expect(js).not.toContain("America/Vancouver");
   });
 });

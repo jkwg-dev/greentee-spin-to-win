@@ -1,31 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { parseInZone } from "./time";
+import { offsetMinutes, parseAtOffset } from "./time";
 
-const TZ = "America/Vancouver";
+const PT = "-07:00";
 
-describe("parseInZone", () => {
-  it("treats wall-clock times as Vancouver local time during PDT", () => {
-    // October 1 2026 is PDT (UTC-7).
-    expect(parseInZone("2026-10-01T00:00:00", TZ).toISOString()).toBe("2026-10-01T07:00:00.000Z");
+describe("parseAtOffset", () => {
+  it("treats wall-clock times as Pacific Time (UTC-7)", () => {
+    expect(parseAtOffset("2026-10-01T00:00:00", PT).toISOString()).toBe("2026-10-01T07:00:00.000Z");
   });
 
-  it("treats wall-clock times as Vancouver local time during PST", () => {
-    // DST ends Nov 1 2026, so Nov 2 09:00 is PST (UTC-8) = 17:00Z, as in CLAUDE.md.
-    expect(parseInZone("2026-11-02T09:00:00", TZ).toISOString()).toBe("2026-11-02T17:00:00.000Z");
+  it("keeps UTC-7 after November 1: British Columbia no longer falls back", () => {
+    // Nov 2 09:00 PT = 16:00Z. Time zone data older than 2026a would say 17:00Z.
+    expect(parseAtOffset("2026-11-02T09:00:00", PT).toISOString()).toBe("2026-11-02T16:00:00.000Z");
+    expect(parseAtOffset("2027-01-15T12:00", PT).toISOString()).toBe("2027-01-15T19:00:00.000Z");
   });
 
   it("accepts date-only input as local midnight", () => {
-    expect(parseInZone("2026-10-01", TZ).toISOString()).toBe("2026-10-01T07:00:00.000Z");
+    expect(parseAtOffset("2026-10-01", PT).toISOString()).toBe("2026-10-01T07:00:00.000Z");
   });
 
   it("respects an explicit offset or Z", () => {
-    expect(parseInZone("2026-11-02T17:00:00Z", TZ).toISOString()).toBe("2026-11-02T17:00:00.000Z");
-    expect(parseInZone("2026-11-02T09:00:00-08:00", TZ).toISOString()).toBe(
+    expect(parseAtOffset("2026-11-02T16:00:00Z", PT).toISOString()).toBe(
+      "2026-11-02T16:00:00.000Z",
+    );
+    expect(parseAtOffset("2026-11-02T09:00:00-07:00", PT).toISOString()).toBe(
+      "2026-11-02T16:00:00.000Z",
+    );
+    expect(parseAtOffset("2026-11-02T09:00:00-08:00", PT).toISOString()).toBe(
       "2026-11-02T17:00:00.000Z",
     );
   });
 
   it("rejects garbage", () => {
-    expect(() => parseInZone("soon", TZ)).toThrow(/Invalid date/);
+    expect(() => parseAtOffset("soon", PT)).toThrow(/Invalid date/);
+  });
+});
+
+describe("offsetMinutes", () => {
+  it("converts an offset string to minutes", () => {
+    expect(offsetMinutes("-07:00")).toBe(-420);
+    expect(offsetMinutes("+05:30")).toBe(330);
+    expect(() => offsetMinutes("PT")).toThrow(/Invalid UTC offset/);
   });
 });

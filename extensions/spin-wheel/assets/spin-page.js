@@ -183,20 +183,37 @@
     return node;
   }
 
+  /**
+   * Pacific Time is a fixed UTC-7 all year (British Columbia, from 2026).
+   * Dates are moved by this offset and formatted as UTC, so the browser never
+   * resolves a zone and out of date time zone data cannot shift the result.
+   * Mirrors CAMPAIGN_UTC_OFFSET and CAMPAIGN_ZONE_LABEL in campaign.ts; a
+   * test keeps them equal.
+   */
+  var PT_OFFSET_MINUTES = -420;
+  var PT_LABEL = "PT";
+
+  function inCampaignZone(d) {
+    return new Date(d.getTime() + PT_OFFSET_MINUTES * 60000);
+  }
+
   function formatExpiry(iso) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
     try {
-      // en-US: "November 2, 2026 at 9:00 AM PST" (en-CA would end in "a.m." and fight the sentence's period).
-      return new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Vancouver",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        timeZoneName: "short",
-      }).format(d);
+      // en-US: "November 2, 2026 at 9:00 AM PT" (en-CA would end in "a.m." and fight the sentence's period).
+      return (
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: "UTC",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(inCampaignZone(d)) +
+        " " +
+        PT_LABEL
+      );
     } catch (e) {
       return d.toLocaleString();
     }
@@ -208,11 +225,11 @@
     if (isNaN(d.getTime())) return iso;
     try {
       return new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Vancouver",
+        timeZone: "UTC",
         month: "short",
         day: "numeric",
         year: "numeric",
-      }).format(d);
+      }).format(inCampaignZone(d));
     } catch (e) {
       return d.toLocaleDateString();
     }

@@ -293,7 +293,10 @@ metafield for values that a non developer may need to change mid campaign.
 
 - `CAMPAIGN_MODE`: `off`, `test`, or `live`. See Test mode below. `off` is the kill switch: the
   extension shows nothing and the spin endpoints return a friendly closed state.
-- `CAMPAIGN_START`, `CAMPAIGN_END` (ISO, America/Vancouver)
+- `CAMPAIGN_START`, `CAMPAIGN_END` (ISO with an explicit `-07:00` offset. British Columbia is on
+  Pacific Time, UTC-7, all year from 2026; a value without an offset is read at
+  `CAMPAIGN_UTC_OFFSET`, never through the `America/Vancouver` zone, whose data is stale on
+  older runtimes and browsers)
 - `TEST_TAG` (default `test-user`)
 - `TEST_EMAILS` (comma separated allowlist, for guest checkouts)
 - `TEST_BYPASS_MIN_SUBTOTAL` (boolean, default false)

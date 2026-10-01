@@ -24,9 +24,9 @@ describe("loadEnv", () => {
     expect(env.appUrl).toBe("https://spin.example.com");
     expect(env.shopDomain).toBe("greentee-golf.myshopify.com");
     expect(env.spinPageUrl).toBe("https://greentee-golf.myshopify.com/pages/spin-to-win");
-    // Defaults from campaign.ts, interpreted in America/Vancouver.
+    // Defaults from campaign.ts: Pacific Time, UTC-7 all year.
     expect(env.campaignStart.toISOString()).toBe("2026-10-01T07:00:00.000Z");
-    expect(env.campaignEnd.toISOString()).toBe("2026-11-02T17:00:00.000Z");
+    expect(env.campaignEnd.toISOString()).toBe("2026-11-02T16:00:00.000Z");
   });
 
   it("defaults CAMPAIGN_MODE to off when unset", () => {

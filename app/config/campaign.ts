@@ -7,15 +7,26 @@
  * Nothing else in the codebase may duplicate these literals.
  */
 
-export const CAMPAIGN_TIMEZONE = "America/Vancouver";
+/**
+ * Pacific Time. British Columbia stopped changing clocks in 2026 and is UTC-7
+ * all year, so the offset is fixed here instead of resolved from the
+ * America/Vancouver zone: servers and browsers with time zone data older than
+ * 2026a still move that zone to UTC-8 on November 1.
+ */
+export const CAMPAIGN_UTC_OFFSET = "-07:00";
+/** CAMPAIGN_UTC_OFFSET in minutes, for shifting an instant before display. A test keeps them equal. */
+export const CAMPAIGN_UTC_OFFSET_MINUTES = -420;
+/** Shown after a time of day, e.g. "9:00 AM PT". */
+export const CAMPAIGN_ZONE_LABEL = "PT";
 
 /**
- * Defaults for values that the environment may override. Wall-clock times are
- * interpreted in CAMPAIGN_TIMEZONE (see env.server.ts and lib/time.ts).
+ * Defaults for values that the environment may override. A wall-clock time
+ * without an offset is read at CAMPAIGN_UTC_OFFSET (see env.server.ts and
+ * lib/time.ts).
  */
 export const CAMPAIGN_DEFAULTS = {
-  start: "2026-10-01T00:00:00",
-  end: "2026-11-02T09:00:00",
+  start: "2026-10-01T00:00:00-07:00",
+  end: "2026-11-02T09:00:00-07:00",
   minSubtotalCad: 300,
   testTag: "test-user",
 } as const;
